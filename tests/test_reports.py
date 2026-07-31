@@ -168,7 +168,11 @@ def test_volume_loss_as_a_modifier_is_not_an_atelectasis_assertion():
 
 
 def test_labelled_header_values_are_removed():
-    text = "Patient Name : Ravi Sharma\nMRN          : SMC-001234\nABHA Number  : 99-1111-2222-3333\n"
+    text = (
+        "Patient Name : Ravi Sharma\n"
+        "MRN          : SMC-001234\n"
+        "ABHA Number  : 99-1111-2222-3333\n"
+    )
     out = scrub_report(text).text
     assert "Ravi" not in out
     assert "SMC-001234" not in out

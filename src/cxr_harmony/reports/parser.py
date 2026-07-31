@@ -16,12 +16,17 @@ import re
 from ..schema.vocab import ReportSection
 
 #: Section headings as the contributing sites write them.
+_HEADINGS: list[tuple[ReportSection, str]] = [
+    (ReportSection.INDICATION, r"INDICATION|CLINICAL\s+HISTORY|HISTORY"),
+    (ReportSection.TECHNIQUE, r"TECHNIQUE|PROCEDURE|EXAMINATION\s+TECHNIQUE"),
+    (ReportSection.COMPARISON, r"COMPARISON|PRIOR\s+STUDIES?"),
+    (ReportSection.FINDINGS, r"FINDINGS|OBSERVATIONS?"),
+    (ReportSection.IMPRESSION, r"IMPRESSION|CONCLUSION|OPINION|ADVICE"),
+]
+
 _SECTION_PATTERNS: list[tuple[ReportSection, re.Pattern[str]]] = [
-    (ReportSection.INDICATION, re.compile(r"^\s*(INDICATION|CLINICAL\s+HISTORY|HISTORY)\s*:?\s*$", re.I)),
-    (ReportSection.TECHNIQUE, re.compile(r"^\s*(TECHNIQUE|PROCEDURE|EXAMINATION\s+TECHNIQUE)\s*:?\s*$", re.I)),
-    (ReportSection.COMPARISON, re.compile(r"^\s*(COMPARISON|PRIOR\s+STUDIES?)\s*:?\s*$", re.I)),
-    (ReportSection.FINDINGS, re.compile(r"^\s*(FINDINGS|OBSERVATIONS?)\s*:?\s*$", re.I)),
-    (ReportSection.IMPRESSION, re.compile(r"^\s*(IMPRESSION|CONCLUSION|OPINION|ADVICE)\s*:?\s*$", re.I)),
+    (section, re.compile(rf"^\s*(?:{alternatives})\s*:?\s*$", re.I))
+    for section, alternatives in _HEADINGS
 ]
 
 #: Lines that terminate the body of the report.
