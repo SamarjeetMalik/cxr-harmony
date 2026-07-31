@@ -94,7 +94,9 @@ def test_non_dicom_file_is_quarantined(delivery, workspace, tmp_path):
         ("BodyPartExamined", "ABDOMEN", QuarantineReason.WRONG_BODY_PART),
     ],
 )
-def test_out_of_scope_objects_are_quarantined(delivery, workspace, tmp_path, attribute, value, reason):
+def test_out_of_scope_objects_are_quarantined(
+    delivery, workspace, tmp_path, attribute, value, reason
+):
     src, _ = delivery
     staged = tmp_path / "staged"
     shutil.copytree(src, staged)
@@ -119,7 +121,11 @@ def test_missing_required_tag_is_quarantined_with_the_tag_named(delivery, worksp
     ds.save_as(path, enforce_file_format=True)
 
     result = ingest(staged, workspace)
-    record = next(r for r in result.quarantined if r["reason"] == QuarantineReason.MISSING_REQUIRED_TAG.value)
+    record = next(
+        r
+        for r in result.quarantined
+        if r["reason"] == QuarantineReason.MISSING_REQUIRED_TAG.value
+    )
     assert record["detail"] == "PatientID"
 
 

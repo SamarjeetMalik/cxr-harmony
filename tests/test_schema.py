@@ -1,4 +1,8 @@
-"""The schema is the pipeline's PHI boundary, so its refusals are tested, not just its acceptances."""
+"""The schema is the pipeline's PHI boundary.
+
+Its refusals are therefore tested as carefully as its acceptances: a model that
+quietly accepts a patient name is a model that will one day carry one.
+"""
 
 from __future__ import annotations
 
