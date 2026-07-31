@@ -24,6 +24,7 @@ import hmac
 import os
 import re
 import secrets
+import warnings
 from datetime import date, datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
@@ -45,13 +46,28 @@ _NON_ALNUM = re.compile(r"[^A-Za-z0-9]")
 KEY_BYTES = 32
 
 
-def load_or_create_key(path: Path) -> bytes:
-    """Return the pseudonymisation key at ``path``, creating it if absent.
+#: Environment variable holding a hex-encoded key, for Docker or Kubernetes
+#: secrets. Preferred over a file: a secret mounted as an environment variable
+#: leaves no artefact on disk to be backed up, snapshotted or copied into an image.
+KEY_ENV_VAR = "CXR_HARMONY_KEY"
 
-    In deployment this belongs in a KMS or HSM, not on the filesystem beside the
-    data — the file here is what makes the demonstration self-contained. It is
-    excluded from version control, and the working directory it lives in is
-    excluded too.
+
+def load_or_create_key(path: Path, *, allow_create: bool = False) -> bytes:
+    """Return the pseudonymisation key at ``path``.
+
+    Creating a key is **opt-in**. Silently generating one on first run is how a
+    production deployment ends up with its re-identification secret sitting in a
+    working directory, inside whatever backs that directory up — and because the
+    pipeline would run perfectly, nobody would find out until an audit. An
+    explicit ``allow_create`` means the demo works out of the box while a
+    deployment has to say so on purpose.
+
+    Creation also warns. The key is the entire basis of the claim that pseudonyms
+    are not reversible, so a file-backed one is a fact the operator should be told
+    about rather than left to infer from the source.
+
+    In deployment this belongs in a KMS or HSM, or in :data:`KEY_ENV_VAR` via
+    :meth:`Pseudonymiser.from_env`.
     """
     path = Path(path)
     if path.exists():
@@ -60,6 +76,13 @@ def load_or_create_key(path: Path) -> bytes:
             raise ValueError(f"pseudonymisation key at {path} is too short to be usable")
         return key
 
+    if not allow_create:
+        raise FileNotFoundError(
+            f"no pseudonymisation key at {path}. Set {KEY_ENV_VAR} to a "
+            f"KMS-backed secret, or pass allow_create=True to generate a local "
+            f"key for development."
+        )
+
     key = secrets.token_bytes(KEY_BYTES)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(key)
@@ -67,6 +90,15 @@ def load_or_create_key(path: Path) -> bytes:
         os.chmod(path, 0o600)
     except (OSError, NotImplementedError):  # pragma: no cover - platform dependent
         pass
+
+    warnings.warn(
+        f"Created a pseudonymisation key on the local filesystem at {path}. "
+        "This is adequate for development and not for production: anything that "
+        "backs up or snapshots this directory now holds the key that reverses "
+        f"every pseudonym in the cohort. Use a KMS, an HSM, or {KEY_ENV_VAR}.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
     return key
 
 
@@ -86,6 +118,23 @@ class Pseudonymiser:
         if len(key) < 16:
             raise ValueError("key must be at least 16 bytes")
         self._key = key
+
+    @classmethod
+    def from_env(cls, var: str = KEY_ENV_VAR) -> Pseudonymiser:
+        """Build from a hex-encoded key in the environment.
+
+        The deployment path: a secret mounted by Docker or Kubernetes never
+        touches the filesystem, so it cannot be picked up by a backup, baked into
+        an image layer, or left behind on a decommissioned volume.
+        """
+        raw = os.environ.get(var, "").strip()
+        if not raw:
+            raise KeyError(f"{var} is not set")
+        try:
+            key = bytes.fromhex(raw)
+        except ValueError as exc:
+            raise ValueError(f"{var} must be hex-encoded") from exc
+        return cls(key)
 
     # --- primitives ----------------------------------------------------
     def _mac(self, domain: str, value: str) -> bytes:
@@ -157,6 +206,7 @@ class Pseudonymiser:
 __all__ = [
     "DEID_UID_ROOT",
     "KEY_BYTES",
+    "KEY_ENV_VAR",
     "Pseudonymiser",
     "load_or_create_key",
     "normalise_identifier",

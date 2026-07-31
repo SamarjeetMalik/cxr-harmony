@@ -1,0 +1,114 @@
+# DVC pipeline definition.
+#
+# The repository already content-addresses its releases: every file is hashed into
+# a manifest and the digest over that manifest is the release identity. DVC adds
+# two things that does not give you — a declared dependency graph, so a stage
+# reruns exactly when its inputs change, and a remote, so the data itself can be
+# versioned alongside the code rather than described by it.
+#
+# The `deps` and `outs` below are what actually determines correctness. Getting
+# them wrong means a stage silently uses stale input, which is the failure mode
+# DVC exists to prevent and the one people reintroduce by listing `outs` and
+# forgetting `deps`.
+#
+#   dvc repro            # run whatever is out of date
+#   dvc dag              # show the graph
+#   dvc push             # send data to the remote
+#
+# Configure a remote before pushing:
+#   dvc remote add -d storage s3://your-bucket/cxr-harmony
+#   dvc remote modify storage endpointurl https://minio.internal:9000
+
+stages:
+  synth:
+    cmd: cxr-harmony synth --out work/incoming --seed ${seed} --image-size ${image_size}
+    deps:
+      - src/cxr_harmony/synth
+    params:
+      - seed
+      - image_size
+    outs:
+      - work/incoming
+
+  ingest:
+    cmd: cxr-harmony ingest --src work/incoming --work work
+    deps:
+      - work/incoming
+      - src/cxr_harmony/ingest
+    outs:
+      - work/raw_manifest.jsonl
+      - work/quarantine.jsonl
+
+  deid:
+    cmd: cxr-harmony deid --work work
+    deps:
+      - work/raw_manifest.jsonl
+      - src/cxr_harmony/deid
+    outs:
+      # The pseudonymisation key is deliberately *not* an output. Tracking it
+      # would push the secret that reverses every pseudonym to the same remote as
+      # the data it protects, which defeats the point of having a key at all.
+      - work/deid
+      - work/deid_manifest.jsonl
+      - work/site_facts.jsonl
+      - work/uid_map.json
+
+  reports:
+    cmd: cxr-harmony reports --work work
+    deps:
+      - work/deid_manifest.jsonl
+      - src/cxr_harmony/reports
+    outs:
+      - work/reports
+      - work/reports_manifest.jsonl
+
+  harmonize:
+    cmd: cxr-harmony harmonize --work work --configs configs/sites
+    deps:
+      - work/deid_manifest.jsonl
+      - work/reports_manifest.jsonl
+      - configs/sites
+      - src/cxr_harmony/harmonize
+    outs:
+      - work/canonical.json
+      - work/unmapped_values.json
+
+  catalog:
+    cmd: cxr-harmony catalog --work work
+    deps:
+      - work/canonical.json
+      - src/cxr_harmony/catalog
+    outs:
+      - work/catalog.db
+
+  qc:
+    cmd: cxr-harmony qc --work work
+    deps:
+      - work/canonical.json
+      - src/cxr_harmony/qc
+    metrics:
+      - work/qc/report.json:
+          cache: false
+
+  release:
+    cmd: cxr-harmony release --work work --version ${version}
+    deps:
+      - work/canonical.json
+      - work/catalog.db
+      - src/cxr_harmony/release
+    params:
+      - version
+    outs:
+      - work/releases
+
+  verify:
+    # Gates the pipeline: exits non-zero on a surviving identifier, a broken audit
+    # link, or a release whose digest no longer matches its manifest.
+    cmd: cxr-harmony verify --work work
+    deps:
+      - work/deid
+      - work/releases
+      - work/audit.jsonl
+    metrics:
+      - work/qc/governance.json:
+          cache: false

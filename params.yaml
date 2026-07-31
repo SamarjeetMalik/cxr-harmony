@@ -1,0 +1,6 @@
+# Parameters DVC tracks. Changing any of these invalidates the stages that
+# declare them, which is the point: a re-run with a different seed is a different
+# dataset and should not be mistaken for the same one.
+seed: 20260731
+image_size: 512
+version: v1.0.0

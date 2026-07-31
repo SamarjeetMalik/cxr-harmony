@@ -48,8 +48,9 @@ pipeline serves:
 | Burned-in text found in **real** hospital images | **71 of 400**, zero-shot across language |
 | Real archive mixing greyscale conventions, silently | **372 MONOCHROME1 : 28 MONOCHROME2** |
 | Cohen's κ vs radiologist annotation (held-out) | **0.897** — target >0.80 |
+| Normal-study detection (strict / vocabulary-adjusted) | **0.854 / 0.932** — was 0.452 / 0.563 |
 | Throughput, real archive, end to end | **103,013 studies/hour** — target >500 |
-| Tests | **313** |
+| Tests | **364** |
 
 ---
 
@@ -192,7 +193,7 @@ across sites rather than only within one.
 
 ## Verification
 
-Correctness claims here are tested, not asserted. 313 tests, and the ones that
+Correctness claims here are tested, not asserted. 364 tests, and the ones that
 matter most break something first — a QC check that has never been observed to
 fail is not evidence of anything.
 
@@ -264,11 +265,16 @@ Stated because they bear on whether any of this is usable, not for form's sake.
 - **The label extractor scores 0.901 on real prose, not 1.000.** The synthetic
   score is 1.000 because the phrase bank and the report generator share an author.
   Measured against radiologist MeSH annotation on a held-out half of Open-i, it is
-  micro F1 0.901 — and **normal-study detection is only 0.674**, meaning about a
-  third of studies a radiologist called normal are not recognised as such. That is
-  the weakest number in the project and the first thing to fix. Real prose also
-  exposed four outright defects, all now regression-tested; see
-  [docs/real-data-evaluation.md](docs/real-data-evaluation.md).
+  micro F1 0.901. Real prose exposed four outright defects, all now
+  regression-tested; see [docs/real-data-evaluation.md](docs/real-data-evaluation.md).
+- **The nine-finding vocabulary is not sufficient for real annotation.** One corpus
+  contained 244 distinct MeSH terms outside it. Those are now detected as `OTHER`
+  rather than silently labelled "no finding", which took normal-study detection
+  from 0.452 to 0.854 strict — but `OTHER` is a holding pen, not a trainable label.
+- **Burned-in false positives are not fixed.** Two filters were implemented,
+  measured, and rejected: one left PHI surviving on 53 of 80 images, the other
+  could not be validated against any ground truth. Over-redaction remains, in the
+  safe direction, and is reported. See [docs/RESULTS.md](docs/RESULTS.md).
 - **Open-i is two Indiana hospital systems.** House style varies, and Indian
   partner-site prose will differ from it. A new archive would need re-scoring.
 - **Burned-in text detection transferred, but is not clean.** It found real
@@ -307,6 +313,7 @@ src/cxr_harmony/
   release/      content-addressed releases, leakage-free splits
   governance/   hash-chained audit log, DPDP mapping, verification
   adapters/     readers for real public corpora (Open-i)
+  interop/      FHIR R4 export
 configs/sites/  one YAML per contributing site
 scripts/        figure generation, real-data fetch and evaluation
 docs/           governance, real-data evaluation, figures, results

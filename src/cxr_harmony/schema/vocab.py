@@ -116,6 +116,10 @@ class QuarantineReason(StrEnum):
     MISSING_REQUIRED_TAG = "MISSING_REQUIRED_TAG"
     NO_PIXEL_DATA = "NO_PIXEL_DATA"
     DUPLICATE_CONTENT = "DUPLICATE_CONTENT"
+    #: BodyPartExamined was absent and a classifier judged the image non-chest.
+    #: Distinct from WRONG_BODY_PART, which means the tag itself said so: this one
+    #: records that the sender told us nothing and we had to look at the pixels.
+    BODY_PART_UNVERIFIED = "BODY_PART_UNVERIFIED"
 
 
 #: Modalities accepted by a chest-radiograph pipeline. ``DX`` is digital

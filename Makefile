@@ -1,4 +1,4 @@
-.PHONY: install dev test lint demo clean docs figures realdata evaluate benchmark results
+.PHONY: install dev test lint demo clean docs figures realdata evaluate benchmark results security-audit fhir
 
 WORK ?= work
 SEED ?= 20260731
@@ -27,6 +27,17 @@ figures:
 benchmark:
 	python scripts/benchmark.py --synthetic --real realdata/unifesp/images
 
+fhir:
+	cxr-harmony export-fhir --work $(WORK) --out $(WORK)/fhir
+
+# Dependency CVEs, common insecure patterns, and committed secrets.
+# Advisory rather than blocking: a scanner that fails the build on day one over a
+# transitive CVE with no fix available teaches people to skip it.
+security-audit:
+	-pip-audit --desc
+	-bandit -r src/ -q
+	-detect-secrets scan --all-files > .secrets.baseline.new && 		echo "review .secrets.baseline.new before committing" 
+
 # Everything behind docs/RESULTS.md, from corpus fetch to redrawn figures.
 results: realdata evaluate benchmark figures
 
@@ -53,6 +64,7 @@ demo: clean
 	cxr-harmony catalog --work $(WORK)
 	cxr-harmony qc --work $(WORK)
 	cxr-harmony release --work $(WORK) --version $(VERSION)
+	cxr-harmony export-fhir --work $(WORK) --out $(WORK)/fhir
 	cxr-harmony verify --work $(WORK)
 
 clean:

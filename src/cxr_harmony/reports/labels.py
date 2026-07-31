@@ -123,6 +123,49 @@ FINDING_PATTERNS: dict[Finding, tuple[str, ...]] = {
     ),
 }
 
+#: Abnormalities the canonical vocabulary cannot express.
+#:
+#: These exist because of a measurement, not a guess. Scored against Open-i's
+#: MeSH annotation, 577 studies were wrongly called normal — and only 20 of those
+#: were canonical findings the extractor missed. The other cause was 244 distinct
+#: MeSH terms with no canonical counterpart, 2,125 mentions in total: calcified
+#: granuloma (181), degenerative change (134), calcinosis (101), granuloma (58),
+#: emphysema (37), aortic tortuosity, spine deformity.
+#:
+#: Without these patterns, ``NO_FINDING`` was being asserted on studies where a
+#: radiologist had reported something real that the schema simply had no slot for.
+#: That is worse than a metric problem: it puts "nothing here" on a study with a
+#: granuloma. Matching them to :attr:`Finding.OTHER` makes the study honestly
+#: "abnormal, outside the vocabulary", which QC can count and a curator can act on.
+OTHER_FINDING_PATTERNS: tuple[str, ...] = (
+    r"granuloma",
+    r"calcinosis",
+    r"calcif",  # calcified, calcification
+    r"degenerative\s+(?:change|disease)",
+    r"spondylosis",
+    r"scoliosis",
+    r"kyphosis",
+    r"emphysema",
+    r"bronchiectasis",
+    r"fibrosis",
+    r"\bscarring\b",
+    r"pleural\s+thickening",
+    r"hyperinflat|hyperexpand|hypoinflat",
+    r"(?:aorta|aortic)\s+(?:is\s+)?(?:tortuo|ectatic|unfolded|atheroscl)",
+    r"tortuous\s+(?:thoracic\s+)?aorta",
+    r"surgical\s+(?:clip|change)",
+    r"sternotomy",
+    r"\bCABG\b",
+    r"pacemaker|defibrillator",
+    r"(?:catheter|tube)\s+(?:tip|is\s+seen)",
+    r"tracheostomy",
+    r"osteophyte",
+    r"\bhernia\b",
+    r"\bmass\b",
+    r"lymph\s+node",
+    r"deformity",
+)
+
 #: Explicit statements that the study, as a whole, is normal.
 #:
 #: Widened against the Open-i corpus. The original set required "lung *fields* are
@@ -201,6 +244,7 @@ _COMPILED: dict[Finding, tuple[re.Pattern[str], ...]] = {
     for finding, patterns in FINDING_PATTERNS.items()
 }
 _COMPILED_NORMAL = tuple(re.compile(p, re.I) for p in NORMAL_PATTERNS)
+_COMPILED_OTHER = tuple(re.compile(p, re.I) for p in OTHER_FINDING_PATTERNS)
 
 
 #: The pattern set as it stood *before* evaluation against real radiologist prose.
@@ -272,8 +316,8 @@ def legacy_patterns() -> Iterator[None]:
     on exception, so a crash mid-benchmark cannot leave the extractor silently
     degraded for the rest of the process.
     """
-    global _COMPILED, _COMPILED_NORMAL, _NEG_RE, _RESOLVED_RE
-    saved = (_COMPILED, _COMPILED_NORMAL, _NEG_RE, _RESOLVED_RE)
+    global _COMPILED, _COMPILED_NORMAL, _COMPILED_OTHER, _NEG_RE, _RESOLVED_RE
+    saved = (_COMPILED, _COMPILED_NORMAL, _COMPILED_OTHER, _NEG_RE, _RESOLVED_RE)
     try:
         _COMPILED = {
             finding: tuple(re.compile(p, re.I) for p in patterns)
@@ -284,9 +328,13 @@ def legacy_patterns() -> Iterator[None]:
         # The legacy scope had no resolution handling at all; a pattern that can
         # never match reproduces that faithfully.
         _RESOLVED_RE = re.compile(r"(?!x)x")
+        # Out-of-vocabulary detection did not exist either. Leaving it enabled
+        # would let the "before" measurement borrow an improvement it predates,
+        # and the whole point of this context manager is an honest comparison.
+        _COMPILED_OTHER = ()
         yield
     finally:
-        _COMPILED, _COMPILED_NORMAL, _NEG_RE, _RESOLVED_RE = saved
+        _COMPILED, _COMPILED_NORMAL, _COMPILED_OTHER, _NEG_RE, _RESOLVED_RE = saved
 
 
 @dataclass(frozen=True)
@@ -338,6 +386,27 @@ def extract_labels(text: str) -> list[ExtractedLabel]:
                 break
 
     positives = [label for label in results.values() if label.present]
+
+    # An abnormality outside the canonical vocabulary still means the study is not
+    # normal. Checked per sentence so a negated mention ("no granuloma") does not
+    # count, and only when nothing canonical was found — a study with cardiomegaly
+    # gains nothing from also being marked OTHER.
+    if not positives:
+        for sentence in _SENTENCE_RE.split(text or ""):
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            for pattern in _COMPILED_OTHER:
+                match = pattern.search(sentence)
+                if match is not None and not _is_negated(sentence, match.start()):
+                    results[Finding.OTHER] = ExtractedLabel(
+                        Finding.OTHER, True, sentence[:200]
+                    )
+                    break
+            if Finding.OTHER in results:
+                break
+        positives = [label for label in results.values() if label.present]
+
     if not positives:
         for pattern in _COMPILED_NORMAL:
             match = pattern.search(text or "")

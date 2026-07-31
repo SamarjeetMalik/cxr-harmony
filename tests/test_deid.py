@@ -396,10 +396,52 @@ def test_key_is_created_once_and_then_reused(tmp_path):
     from cxr_harmony.deid import load_or_create_key
 
     path = tmp_path / "pseudonym.key"
-    first = load_or_create_key(path)
+    with pytest.warns(RuntimeWarning, match="local filesystem"):
+        first = load_or_create_key(path, allow_create=True)
     assert path.exists()
     assert len(first) >= 32
+    # Reading an existing key is not a creation event and must not warn.
     assert load_or_create_key(path) == first, "a second call must not rotate the key"
+
+
+def test_key_creation_is_opt_in(tmp_path):
+    """Silent creation is how a deployment ends up with its re-identification
+    secret in a backed-up working directory, discovered only at audit."""
+    from cxr_harmony.deid import load_or_create_key
+
+    with pytest.raises(FileNotFoundError, match="CXR_HARMONY_KEY"):
+        load_or_create_key(tmp_path / "absent.key")
+
+
+def test_creating_a_filesystem_key_warns(tmp_path):
+    from cxr_harmony.deid import load_or_create_key
+
+    with pytest.warns(RuntimeWarning, match="not for production"):
+        load_or_create_key(tmp_path / "dev.key", allow_create=True)
+
+
+def test_pseudonymiser_from_environment(monkeypatch):
+    """The deployment path: a mounted secret never touches the filesystem."""
+    from cxr_harmony.deid import Pseudonymiser
+
+    monkeypatch.setenv("CXR_HARMONY_KEY", (b"k" * 32).hex())
+    pseudo = Pseudonymiser.from_env()
+    expected = Pseudonymiser(b"k" * 32)
+    assert pseudo.patient_pseudonym(
+        national_id="99-1", site_id="S", local_mrn="1"
+    ) == expected.patient_pseudonym(national_id="99-1", site_id="S", local_mrn="1")
+
+
+def test_from_env_refuses_an_unset_or_malformed_variable(monkeypatch):
+    from cxr_harmony.deid import Pseudonymiser
+
+    monkeypatch.delenv("CXR_HARMONY_KEY", raising=False)
+    with pytest.raises(KeyError):
+        Pseudonymiser.from_env()
+
+    monkeypatch.setenv("CXR_HARMONY_KEY", "not-hex!")
+    with pytest.raises(ValueError, match="hex-encoded"):
+        Pseudonymiser.from_env()
 
 
 def test_a_truncated_key_file_is_refused_rather_than_used(tmp_path):
@@ -415,7 +457,11 @@ def test_a_truncated_key_file_is_refused_rather_than_used(tmp_path):
 def test_generated_keys_differ_between_deployments(tmp_path):
     from cxr_harmony.deid import load_or_create_key
 
-    assert load_or_create_key(tmp_path / "a.key") != load_or_create_key(tmp_path / "b.key")
+    with pytest.warns(RuntimeWarning):
+        a = load_or_create_key(tmp_path / "a.key", allow_create=True)
+    with pytest.warns(RuntimeWarning):
+        b = load_or_create_key(tmp_path / "b.key", allow_create=True)
+    assert a != b
 
 
 # --- The verifier must be able to fail --------------------------------------
@@ -546,3 +592,103 @@ def test_every_released_object_is_monochrome2(deidentified):
     for path in ws.deid_store.rglob("*.dcm"):
         assert pydicom.dcmread(path).PhotometricInterpretation == "MONOCHROME2"
     assert all(r.photometric_interpretation == "MONOCHROME2" for r in result.records)
+
+
+# --- Nested sequences -------------------------------------------------------
+
+
+def test_identifiers_nested_in_a_sequence_are_removed(deidentified):
+    """A de-identifier that walks only the top level reports success and leaves
+    the accession number one level down."""
+    _, ws, _, _ = deidentified
+    for path in ws.deid_store.rglob("*.dcm"):
+        ds = pydicom.dcmread(path)
+        for item in getattr(ds, "RequestAttributesSequence", []):
+            assert not getattr(item, "AccessionNumber", "")
+            assert "RequestingPhysician" not in item
+            assert "RequestedProcedureID" not in item
+
+
+def test_institution_nested_in_a_sequence_is_removed(deidentified):
+    _, ws, _, _ = deidentified
+    for path in ws.deid_store.rglob("*.dcm"):
+        ds = pydicom.dcmread(path)
+        for item in getattr(ds, "ContributingEquipmentSequence", []):
+            assert "InstitutionName" not in item
+            assert "InstitutionAddress" not in item
+            assert "StationName" not in item
+            assert "DeviceSerialNumber" not in item
+
+
+def test_uids_are_remapped_inside_sequences(deidentified):
+    """A surviving original UID inside a sequence re-links the object to its source."""
+    _, ws, _, result = deidentified
+    originals = set(result.uid_map)
+    for path in ws.deid_store.rglob("*.dcm"):
+        ds = pydicom.dcmread(path)
+        for item in getattr(ds, "RequestAttributesSequence", []):
+            uid = str(getattr(item, "StudyInstanceUID", ""))
+            if uid:
+                assert uid not in originals
+                assert uid.startswith("2.25.")
+
+
+def test_a_sequence_inside_a_sequence_is_reached(deidentified):
+    """Two levels down is where a shallow recursion stops."""
+    _, ws, _, result = deidentified
+    originals = set(result.uid_map)
+    checked = 0
+    for path in ws.deid_store.rglob("*.dcm"):
+        ds = pydicom.dcmread(path)
+        for item in getattr(ds, "RequestAttributesSequence", []):
+            for inner in getattr(item, "ReferencedImageSequence", []):
+                uid = str(getattr(inner, "ReferencedSOPInstanceUID", ""))
+                if uid:
+                    assert uid not in originals, "original UID survived two levels down"
+                    assert uid.startswith("2.25.")
+                    checked += 1
+    assert checked > 0, "no nested sequence was present, so nothing was tested"
+
+
+def test_nested_uid_remapping_is_consistent_with_the_top_level(deidentified):
+    """The reference must still point at the object it pointed at before."""
+    _, ws, _, _ = deidentified
+    for path in ws.deid_store.rglob("*.dcm"):
+        ds = pydicom.dcmread(path)
+        for item in getattr(ds, "RequestAttributesSequence", []):
+            for inner in getattr(item, "ReferencedImageSequence", []):
+                referenced = str(getattr(inner, "ReferencedSOPInstanceUID", ""))
+                if referenced:
+                    assert referenced == str(ds.SOPInstanceUID)
+
+
+def test_the_generator_actually_emits_nested_sequences(delivery):
+    """Guards the tests above: if the fixture stopped nesting, they would all
+    vacuously pass."""
+    src, _ = delivery
+    path = next((src / "SITE_A" / "images").glob("*.dcm"))
+    ds = pydicom.dcmread(path)
+    assert "RequestAttributesSequence" in ds
+    assert "ContributingEquipmentSequence" in ds
+    item = ds.RequestAttributesSequence[0]
+    assert item.AccessionNumber
+    assert "ReferencedImageSequence" in item
+
+
+def test_verifier_catches_an_identifier_hidden_in_a_sequence(deidentified, tmp_path):
+    from pydicom.sequence import Sequence
+
+    from cxr_harmony.deid.verify import verify_object
+
+    _, ws, _, _ = deidentified
+    ds = pydicom.dcmread(next(ws.deid_store.rglob("*.dcm")))
+    item = pydicom.Dataset()
+    item.InstitutionName = "Sunrise Medical College and Hospital"
+    ds.ContributingEquipmentSequence = Sequence([item])
+    tampered = tmp_path / "nested.dcm"
+    ds.save_as(tampered, enforce_file_format=True)
+
+    violations = verify_object(
+        tampered, "nested.dcm", ["Sunrise Medical College and Hospital"]
+    )
+    assert any(v.kind == "phi_substring" for v in violations)

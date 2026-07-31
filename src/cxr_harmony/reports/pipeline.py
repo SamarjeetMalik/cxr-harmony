@@ -88,11 +88,12 @@ def process_reports(
     workspace: Workspace,
     *,
     key: bytes | None = None,
+    allow_create: bool = True,
 ) -> ReportResult:
     """Scrub and label every report paired with a de-identified object."""
     src = Path(src)
     workspace.ensure()
-    pseudo = Pseudonymiser(key or load_or_create_key(workspace.key_file))
+    pseudo = Pseudonymiser(key or load_or_create_key(workspace.key_file, allow_create=allow_create))
 
     raw_by_source = {row["source_path"]: row for row in read_jsonl(workspace.raw_manifest)}
     result = ReportResult()

@@ -31,7 +31,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4", "pytest-cov>=4.1", "ruff>=0.4"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "matplotlib>=3.7",
+    # Pipeline versioning and the security audit. Kept out of the runtime
+    # dependencies: neither is needed to run the pipeline, and a data backbone
+    # should not drag a build toolchain into a production image.
+    "dvc>=3.0",
+    "pip-audit>=2.7",
+    "bandit>=1.7",
+    "detect-secrets>=1.4",
+]
 
 [project.scripts]
 cxr-harmony = "cxr_harmony.cli:app"

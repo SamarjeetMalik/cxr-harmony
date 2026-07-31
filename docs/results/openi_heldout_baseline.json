@@ -181,6 +181,13 @@
     "recall": 0.4033,
     "support": 734
   },
+  "normal_detection_vocabulary_adjusted": {
+    "f1": 0.5633,
+    "note": "excludes studies whose only annotated findings lie outside the canonical nine-finding vocabulary; the gap against the strict figure is the vocabulary coverage gap, not an extraction error",
+    "precision": 0.9338,
+    "recall": 0.4033,
+    "support": 734
+  },
   "per_finding": {
     "ATELECTASIS": {
       "f1": 0.9712,

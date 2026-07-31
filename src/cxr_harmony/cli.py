@@ -25,8 +25,9 @@ from .deid import deidentify
 from .governance import AuditLog, run_verification, write_policy_docs
 from .harmonize import harmonize as harmonize_stage
 from .ingest import ingest as ingest_stage
+from .interop import write_bundle
 from .qc import run_checks, write_report
-from .release import SplitRatios, build_release
+from .release import SplitRatios, assign_stratified, build_release, strata_from_dataset
 from .reports import process_reports
 from .schema import CanonicalDataset, write_schemas
 from .synth import generate_corpus
@@ -224,19 +225,62 @@ def release(
     val: float = typer.Option(0.15, help="Target validation proportion."),
     test: float = typer.Option(0.15, help="Target test proportion."),
     salt: str = typer.Option("cxr-harmony-v1", help="Split salt; changing it re-splits."),
+    stratified: bool = typer.Option(
+        False,
+        help="Allocate proportionally within site x sex x age strata rather than globally.",
+    ),
     stamp: bool = typer.Option(True, help="Record the cut time in release.json."),
 ) -> None:
     """Cut an immutable, content-addressed release."""
     ws = _workspace(work)
     dataset = CanonicalDataset.model_validate_json(ws.canonical.read_text(encoding="utf-8"))
+    ratios = SplitRatios(train=train, val=val, test=test)
     result = build_release(
         dataset,
         ws,
         version=version,
-        ratios=SplitRatios(train=train, val=val, test=test),
+        ratios=ratios,
         split_salt=salt,
         created_at=_now() if stamp else None,
     )
+    if stratified:
+        # Re-assign within strata. The manifest and digest are unaffected — the
+        # split is metadata about the release, not part of its content — so the
+        # dataset identity stays stable across split policies.
+        strata = strata_from_dataset(dataset)
+        result.assignments = assign_stratified(strata, salt=salt, ratios=ratios)
+        result.proportions = {
+            k: round(
+                sum(1 for v in result.assignments.values() if v.value == k)
+                / max(len(result.assignments), 1),
+                4,
+            )
+            for k in ("train", "val", "test")
+        }
+        result.studies_per_split = {"train": 0, "val": 0, "test": 0}
+        for study in dataset.studies:
+            split = result.assignments.get(study.pseudo_patient_id)
+            if split is not None:
+                result.studies_per_split[split.value] += 1
+        console.print(f"  stratified across {len(strata)} strata")
+        # Stratifying trades proportion accuracy for representation, and at small
+        # cohort sizes that trade is bad: with more strata than patients-per-split,
+        # each stratum is a handful of people and the hash cannot land near the
+        # target within it. Saying so beats letting someone read 40/3/5 as normal.
+        worst = max(
+            abs(result.proportions[k] - getattr(ratios, k)) for k in ("train", "val", "test")
+        )
+        if worst > 0.10:
+            median_stratum = sorted(len(v) for v in strata.values())[len(strata) // 2]
+            console.print(
+                f"[yellow]  realised proportions are {worst:.0%} off target: "
+                f"{len(strata)} strata over {len(result.assignments)} patients, median "
+                f"{median_stratum} patients per stratum.[/]"
+            )
+            console.print(
+                "  Stratification needs enough patients per stratum to allocate within; "
+                "below that the global split is the better choice."
+            )
     record_splits(ws, {k: v.value for k, v in result.assignments.items()}, version)
     _audit(ws, "release", "cut", files=result.n_files)
 
@@ -250,6 +294,27 @@ def release(
         table.add_row(split, str(n_patients), str(result.studies_per_split[split]))
     console.print(table)
     console.print(f"  written to {result.directory}")
+
+
+@app.command("export-fhir")
+def export_fhir(
+    work: Path = typer.Option(Path("work"), help="Working directory."),
+    out: Path = typer.Option(Path("fhir"), help="Directory for the FHIR bundle."),
+) -> None:
+    """Export the cohort as a FHIR R4 bundle."""
+    ws = _workspace(work)
+    dataset = CanonicalDataset.model_validate_json(ws.canonical.read_text(encoding="utf-8"))
+    path, stats = write_bundle(dataset, out)
+    _audit(ws, "interop", "fhir-export", **stats.to_dict())
+
+    console.print(f"[green]Wrote[/] {path}")
+    table = Table(title="FHIR bundle")
+    table.add_column("Resource")
+    table.add_column("Count", justify="right")
+    for name, value in stats.to_dict().items():
+        table.add_row(name.removeprefix("n_"), str(value))
+    console.print(table)
+    console.print("  no Patient resource is emitted; subjects carry the pseudonym only")
 
 
 @app.command()

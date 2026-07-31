@@ -12,7 +12,7 @@ Nothing here writes pixel data. See :mod:`cxr_harmony.workspace` for why.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -42,6 +42,9 @@ class IngestRecord:
     modality: str
     body_part: str
     report_path: str | None
+    #: True when BodyPartExamined was empty, so anatomical scope rests on the
+    #: sender's word rather than on anything this pipeline can check.
+    body_part_unverified: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -55,6 +58,7 @@ class IngestRecord:
             "modality": self.modality,
             "body_part": self.body_part,
             "report_path": self.report_path,
+            "body_part_unverified": self.body_part_unverified,
         }
 
 
@@ -107,6 +111,17 @@ def _find_report(src: Path, site_id: str, image_path: Path) -> Path | None:
     return candidate if candidate.exists() else None
 
 
+#: A classifier takes an image path and returns ``(body_part, confidence)``.
+#: Deliberately a plain callable rather than a class: the model is somebody else's
+#: problem, and the pipeline should not care whether it is a CNN, a rule, or a
+#: lookup against a manifest the site supplied out of band.
+BodyPartClassifier = Callable[[Path], tuple[str, float]]
+
+#: A classifier must be at least this sure before its opinion overrides silence.
+#: Set high because the failure it guards against is discarding a real chest film.
+BODY_PART_CONFIDENCE = 0.9
+
+
 def _classify(ds: pydicom.Dataset) -> tuple[QuarantineReason, str] | None:
     """Return a rejection reason, or ``None`` if the object is acceptable."""
     for tag in REQUIRED_TAGS:
@@ -129,7 +144,12 @@ def _classify(ds: pydicom.Dataset) -> tuple[QuarantineReason, str] | None:
     return None
 
 
-def ingest(src: Path, workspace: Workspace) -> IngestResult:
+def ingest(
+    src: Path,
+    workspace: Workspace,
+    *,
+    body_part_classifier: BodyPartClassifier | None = None,
+) -> IngestResult:
     """Index an incoming delivery into ``workspace``.
 
     Idempotent: running twice over an unchanged delivery rewrites byte-identical
@@ -180,6 +200,28 @@ def ingest(src: Path, workspace: Workspace) -> IngestResult:
                 continue
             seen_digests[digest] = relative
 
+            # BodyPartExamined absent is tolerated by _classify, because absent is
+            # uninformative rather than disqualifying. On a real archive that
+            # tolerance has teeth: a 400-object hospital export arrived with the tag
+            # empty on every single object, and it was a body-part dataset, so
+            # abdominal and pelvic studies entered what a chest pipeline would treat
+            # as a chest cohort. Where a classifier is available, it gets a say.
+            if body_part_classifier is not None and not getattr(ds, "BodyPartExamined", ""):
+                predicted, confidence = body_part_classifier(path)
+                if (
+                    predicted.strip().upper() not in ACCEPTED_BODY_PARTS
+                    and confidence >= BODY_PART_CONFIDENCE
+                ):
+                    result.quarantined.append(
+                        _quarantine(
+                            relative,
+                            site_id,
+                            QuarantineReason.BODY_PART_UNVERIFIED,
+                            f"classifier says {predicted} at {confidence:.2f}",
+                        )
+                    )
+                    continue
+
             report = _find_report(src, site_id, path)
             result.accepted.append(
                 IngestRecord(
@@ -192,6 +234,7 @@ def ingest(src: Path, workspace: Workspace) -> IngestResult:
                     series_uid=str(ds.SeriesInstanceUID),
                     modality=str(ds.Modality).upper(),
                     body_part=str(getattr(ds, "BodyPartExamined", "") or "").upper(),
+                    body_part_unverified=not getattr(ds, "BodyPartExamined", ""),
                     report_path=(
                         report.relative_to(src).as_posix() if report is not None else None
                     ),

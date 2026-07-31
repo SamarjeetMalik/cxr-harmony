@@ -93,6 +93,7 @@ def run_checks(
     quarantined: list[dict] | None = None,
     view_imbalance_threshold: float = 0.35,
     parity_gap_threshold: float = 0.25,
+    body_part_unverified_threshold: float = 0.01,
 ) -> QCReport:
     """Run every check and return the report."""
     report = QCReport()
@@ -211,6 +212,26 @@ def run_checks(
     # studies into what was meant to be a chest cohort. Nothing upstream can catch
     # that, so it is surfaced here as an explicit unverified-scope warning.
     unattested = [s.study_uid for s in dataset.studies if not s.body_part]
+    unattested_fraction = len(unattested) / n_studies if n_studies else 0.0
+    # Release-blocking above the threshold. A warning was the right severity while
+    # nothing could be done about it; now that a classifier can be plugged into
+    # ingest, a cohort that is overwhelmingly unverified is a decision someone has
+    # to take deliberately rather than scroll past.
+    report.checks.append(
+        Check(
+            "body_part_scope_verified",
+            Severity.FAIL,
+            unattested_fraction <= body_part_unverified_threshold,
+            f"{_pct(len(unattested), n_studies)}% of studies have unverified anatomical "
+            f"scope (threshold {body_part_unverified_threshold:.0%}); supply a body-part "
+            "classifier to ingest, or accept that non-chest studies may be present",
+            {
+                "n_unattested": len(unattested),
+                "fraction": round(unattested_fraction, 4),
+                "threshold": body_part_unverified_threshold,
+            },
+        )
+    )
     report.checks.append(
         Check(
             "body_part_attested",

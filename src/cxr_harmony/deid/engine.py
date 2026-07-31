@@ -240,12 +240,13 @@ def deidentify(
     workspace: Workspace,
     *,
     key: bytes | None = None,
+    allow_create: bool = True,
     detection_params: DetectionParams | None = None,
 ) -> DeidResult:
     """De-identify every object indexed in ``workspace.raw_manifest``."""
     src = Path(src)
     workspace.ensure()
-    pseudo = Pseudonymiser(key or load_or_create_key(workspace.key_file))
+    pseudo = Pseudonymiser(key or load_or_create_key(workspace.key_file, allow_create=allow_create))
 
     result = DeidResult()
 

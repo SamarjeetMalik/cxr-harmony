@@ -15,23 +15,23 @@
         {
           "meets_target": true,
           "n_studies": 64,
-          "seconds": 0.864,
+          "seconds": 1.576,
           "stage": "ingest",
-          "studies_per_hour": 266812.5
+          "studies_per_hour": 146169.0
         },
         {
           "meets_target": true,
           "n_studies": 64,
-          "seconds": 1.735,
+          "seconds": 3.273,
           "stage": "deidentify",
-          "studies_per_hour": 132800.9
+          "studies_per_hour": 70383.7
         },
         {
           "meets_target": true,
           "n_studies": 64,
-          "seconds": 2.598,
+          "seconds": 4.85,
           "stage": "ingest+deidentify",
-          "studies_per_hour": 88668.0
+          "studies_per_hour": 47507.7
         }
       ]
     },
@@ -43,23 +43,23 @@
         {
           "meets_target": true,
           "n_studies": 400,
-          "seconds": 5.611,
+          "seconds": 10.345,
           "stage": "ingest",
-          "studies_per_hour": 256626.8
+          "studies_per_hour": 139200.1
         },
         {
           "meets_target": true,
           "n_studies": 400,
-          "seconds": 8.368,
+          "seconds": 15.569,
           "stage": "deidentify",
-          "studies_per_hour": 172094.2
+          "studies_per_hour": 92492.8
         },
         {
           "meets_target": true,
           "n_studies": 400,
-          "seconds": 13.979,
+          "seconds": 25.914,
           "stage": "ingest+deidentify",
-          "studies_per_hour": 103013.3
+          "studies_per_hour": 55569.3
         }
       ]
     }

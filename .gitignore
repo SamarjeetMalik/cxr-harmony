@@ -49,3 +49,6 @@ scratchpad/
 # Real corpora are fetched on demand, never committed (see scripts/fetch_real_data.py)
 realdata/
 work-real/
+
+# Security-audit scratch
+.secrets.baseline.new

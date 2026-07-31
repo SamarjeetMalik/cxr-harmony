@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from cxr_harmony.adapters.openi import load_corpus  # noqa: E402
+from cxr_harmony.adapters.openi import MESH_TO_FINDING, load_corpus  # noqa: E402
 from cxr_harmony.qc.agreement import agreement_by_label, pooled_kappa  # noqa: E402
 from cxr_harmony.reports.labels import legacy_patterns, positive_findings  # noqa: E402
 from cxr_harmony.reports.parser import clinical_text, parse_sections  # noqa: E402
@@ -101,10 +101,28 @@ def evaluate(
     return _score(reports, baseline=False)
 
 
+def _only_out_of_vocabulary(report) -> bool:
+    """True when every finding annotated on this study is outside the vocabulary.
+
+    Such a study is annotated abnormal, but with terms this schema has no way to
+    express, so it can be neither predicted nor represented. Counting it as a
+    normal-detection error measures coverage, not extraction.
+    """
+    if Finding.NO_FINDING in report.findings:
+        return False
+    terms = [
+        t.split("/")[0].strip().lower()
+        for t in report.mesh_terms
+        if t.split("/")[0].strip().lower() not in ("normal", "no indexing")
+    ]
+    return bool(terms) and all(t not in MESH_TO_FINDING for t in terms)
+
+
 def _score(reports: list, *, baseline: bool) -> dict:
 
     per_finding: dict[Finding, Score] = {f: Score() for f in SCORED}
     normal_tp = normal_fp = normal_fn = 0
+    adj_tp = adj_fp = adj_fn = 0
     exact = 0
     examples_missed: dict[str, list[str]] = {}
     examples_spurious: dict[str, list[str]] = {}
@@ -152,6 +170,19 @@ def _score(reports: list, *, baseline: bool) -> dict:
         elif truth_normal:
             normal_fn += 1
 
+        # Vocabulary-adjusted: skip studies whose only annotated findings lie
+        # outside the canonical vocabulary. Those cannot be represented by this
+        # schema at all, so scoring against them measures the coverage gap rather
+        # than the extractor. Reported alongside the strict number, never instead
+        # of it — the difference between the two *is* the coverage measurement.
+        if not _only_out_of_vocabulary(report):
+            if truth_normal and pred_normal:
+                adj_tp += 1
+            elif pred_normal:
+                adj_fp += 1
+            elif truth_normal:
+                adj_fn += 1
+
         if truth_pos == pred_pos:
             exact += 1
 
@@ -169,6 +200,7 @@ def _score(reports: list, *, baseline: bool) -> dict:
     )
 
     normal = Score(tp=normal_tp, fp=normal_fp, fn=normal_fn)
+    adjusted = Score(tp=adj_tp, fp=adj_fp, fn=adj_fn)
 
     scored_names = [f.value for f in SCORED]
     agreements = agreement_by_label(predicted_sets, reference_sets, scored_names)
@@ -192,6 +224,17 @@ def _score(reports: list, *, baseline: bool) -> dict:
             "recall": round(normal.recall, 4),
             "f1": round(normal.f1, 4),
             "support": normal.support,
+        },
+        "normal_detection_vocabulary_adjusted": {
+            "precision": round(adjusted.precision, 4),
+            "recall": round(adjusted.recall, 4),
+            "f1": round(adjusted.f1, 4),
+            "support": adjusted.support,
+            "note": (
+                "excludes studies whose only annotated findings lie outside the "
+                "canonical nine-finding vocabulary; the gap against the strict "
+                "figure is the vocabulary coverage gap, not an extraction error"
+            ),
         },
         "per_finding": {
             finding.value: {
@@ -238,7 +281,10 @@ def render(result: dict) -> str:
         f"macro F1            : {result['macro_f1']:.3f}",
         f"exact-match rate    : {result['exact_match_rate']:.3f}",
         f"normal detection F1 : {result['normal_detection']['f1']:.3f} "
-        f"(support {result['normal_detection']['support']})",
+        f"(strict, support {result['normal_detection']['support']})",
+        f"                      {result['normal_detection_vocabulary_adjusted']['f1']:.3f} "
+        f"(vocabulary-adjusted, support "
+        f"{result['normal_detection_vocabulary_adjusted']['support']})",
     ]
 
     pooled = result["kappa"]["pooled"]

@@ -395,3 +395,60 @@ def test_consolidation_proper_is_still_recognised():
         "Findings are compatible with pneumonia.",
     ):
         assert Finding.CONSOLIDATION in positive_findings(sentence)
+
+
+# --- Out-of-vocabulary abnormalities ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "There is a calcified granuloma in the right upper lobe.",
+        "Degenerative changes of the thoracic spine are noted.",
+        "Mild emphysematous changes are present.",
+        "Stable sternotomy wires and surgical clips.",
+        "There is a tortuous thoracic aorta.",
+        "Mild scoliosis of the thoracic spine.",
+        "Biapical pleural thickening is noted.",
+    ],
+)
+def test_out_of_vocabulary_abnormalities_are_not_called_normal(sentence):
+    """The schema has nine findings; radiologists report far more than nine things.
+
+    Scored against radiologist annotation, 577 studies were wrongly called normal
+    and only 20 of those were canonical findings the extractor missed. The rest
+    were abnormalities with no slot in the vocabulary. Calling such a study
+    'nothing here' is worse than a metric problem.
+    """
+    findings = positive_findings(sentence)
+    assert Finding.NO_FINDING not in findings
+    assert Finding.OTHER in findings
+
+
+def test_a_negated_out_of_vocabulary_finding_does_not_block_normal():
+    assert positive_findings(
+        "No calcified granuloma is seen. The lungs are clear."
+    ) == [Finding.NO_FINDING]
+
+
+def test_other_does_not_displace_a_canonical_finding():
+    """A study with cardiomegaly gains nothing from also being marked OTHER."""
+    findings = positive_findings(
+        "The heart is mildly enlarged. Degenerative changes of the spine are noted."
+    )
+    assert Finding.CARDIOMEGALY in findings
+    assert Finding.OTHER not in findings
+
+
+def test_a_genuinely_normal_study_is_still_normal():
+    assert positive_findings(
+        "The lungs are clear. The cardiomediastinal silhouette is unremarkable."
+    ) == [Finding.NO_FINDING]
+
+
+def test_other_is_recorded_as_a_finding_not_as_silence():
+    """QC can count OTHER; it cannot count a study that was silently called normal."""
+    labels = extract_labels("A calcified granuloma is present in the left base.")
+    other = [label for label in labels if label.finding is Finding.OTHER]
+    assert other and other[0].present
+    assert other[0].evidence

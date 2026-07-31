@@ -88,6 +88,69 @@ def assign_all(
     }
 
 
+def assign_stratified(
+    strata: dict[str, list[str]],
+    *,
+    salt: str = "cxr-harmony-v1",
+    ratios: SplitRatios | None = None,
+) -> dict[str, Split]:
+    """Assign per patient, with proportional allocation inside each stratum.
+
+    ``strata`` maps a stratum key to the patients in it. Every patient must appear
+    in exactly one stratum, which is why the caller supplies the grouping rather
+    than this module inferring it — a patient imaged at two sites belongs to one
+    stratum, and only the caller knows which.
+
+    The threshold is applied *within* each stratum rather than globally. Both
+    properties that matter survive: assignment still depends on the patient alone,
+    so it is stable when the cohort grows, and it is still per patient, so no
+    patient can straddle two splits.
+
+    **Proportional, not Neyman, allocation.** Neyman allocation sizes strata by
+    ``N_h * S_h``, to minimise the variance of an estimate of a population
+    quantity. That is a survey-sampling objective and it is the wrong one here: it
+    would deliberately put *more* test data in high-variance strata, which does not
+    make a test set more representative, it makes it differently biased. A split
+    wants each stratum represented in proportion to its size, which is what this
+    does.
+    """
+    ratios = ratios or SplitRatios()
+    assignments: dict[str, Split] = {}
+    for stratum, patients in sorted(strata.items()):
+        # Salting per stratum decorrelates the thresholds, so a small stratum is
+        # not systematically all-train just because its members happen to hash low.
+        stratum_salt = f"{salt}\x1f{stratum}"
+        for pseudo_id in sorted(set(patients)):
+            assignments[pseudo_id] = assign_split(
+                pseudo_id, salt=stratum_salt, ratios=ratios
+            )
+    return assignments
+
+
+def strata_from_dataset(dataset) -> dict[str, list[str]]:
+    """Group patients by site x sex x age band, one stratum each.
+
+    A patient imaged at more than one site is assigned to the stratum of the site
+    they appear at first in sorted order — arbitrary, but it must be *some* single
+    stratum or the leakage guarantee fails at the seam.
+    """
+    from ..qc.equity import age_band
+
+    patients = {p.pseudo_id: p for p in dataset.patients}
+    site_of: dict[str, str] = {}
+    for study in sorted(dataset.studies, key=lambda s: (s.pseudo_patient_id, s.site_id)):
+        site_of.setdefault(study.pseudo_patient_id, study.site_id)
+
+    strata: dict[str, list[str]] = {}
+    for pseudo_id, patient in patients.items():
+        key = (
+            f"{site_of.get(pseudo_id, 'UNKNOWN')} | {patient.sex.value} | "
+            f"{age_band(patient.age_years)}"
+        )
+        strata.setdefault(key, []).append(pseudo_id)
+    return strata
+
+
 def realised_proportions(assignments: dict[str, Split]) -> dict[str, float]:
     """What the split actually came out as, which is not quite the target."""
     counts = Counter(split.value for split in assignments.values())
@@ -98,4 +161,11 @@ def realised_proportions(assignments: dict[str, Split]) -> dict[str, float]:
     }
 
 
-__all__ = ["SplitRatios", "assign_all", "assign_split", "realised_proportions"]
+__all__ = [
+    "SplitRatios",
+    "assign_all",
+    "assign_split",
+    "assign_stratified",
+    "realised_proportions",
+    "strata_from_dataset",
+]

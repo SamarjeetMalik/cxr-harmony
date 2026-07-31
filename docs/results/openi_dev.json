@@ -176,9 +176,16 @@
   },
   "n_reports": 1962,
   "normal_detection": {
-    "f1": 0.6808,
-    "precision": 0.5428,
-    "recall": 0.9129,
+    "f1": 0.8642,
+    "precision": 0.8405,
+    "recall": 0.8893,
+    "support": 723
+  },
+  "normal_detection_vocabulary_adjusted": {
+    "f1": 0.938,
+    "note": "excludes studies whose only annotated findings lie outside the canonical nine-finding vocabulary; the gap against the strict figure is the vocabulary coverage gap, not an extraction error",
+    "precision": 0.9923,
+    "recall": 0.8893,
     "support": 723
   },
   "per_finding": {

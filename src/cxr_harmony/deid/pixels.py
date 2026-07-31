@@ -23,6 +23,33 @@ smooth. The pipeline below keys on that instead —
 Redaction is destructive: the region is filled with zeros in the stored pixel
 data. Blurring or pixelating is not acceptable for this purpose — both have been
 shown to be invertible often enough that they cannot be relied on.
+
+**On false positives, and two filters that were tried and rejected.** On real
+films the detector occasionally boxes high-contrast spine anatomy. Over-redaction
+is the safe direction for a PHI tool, but it is not free, so two ways to cut it
+were implemented and measured:
+
+*Glyph sub-structure* — the idea that a text line is many small marks in a row
+while an anatomical edge is one long stroke. Measured, it is false at the scale
+text is actually rendered: the gradient responses of adjacent characters merge, so
+a true text line contains **one or two** components, never three or more.
+Requiring three left PHI surviving on 53 of 80 synthetic images. Rejected.
+
+*A larger minimum width* — the spurious boxes looked small. On the real archive
+61% of all detections are under 6% of image width, and at 256x256 that band holds
+both spine edges and genuine short laterality markers. There is no labelled ground
+truth for which is which, so any threshold there is a guess that could discard real
+annotation. Rejected.
+
+Also rejected, without implementing: rejecting boxes by aspect ratio above 10:1,
+and requiring text to sit in the top or bottom 15% of the image. Measured text
+lines here run 9.5-9.8:1, so the first sits inside the margin and would begin
+discarding real annotation; the second misses the side-column annotation portable
+units produce. Both trade away recall on PHI.
+
+The false-positive rate therefore stands, and is reported rather than papered
+over. A filter that cannot be validated is worse than a known, bounded, and
+safe-direction error.
 """
 
 from __future__ import annotations

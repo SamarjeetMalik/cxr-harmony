@@ -22,6 +22,7 @@ from pathlib import Path
 
 import numpy as np
 from pydicom.dataset import Dataset, FileMetaDataset
+from pydicom.sequence import Sequence
 from pydicom.uid import ExplicitVRLittleEndian
 
 from ..schema.vocab import Finding
@@ -283,6 +284,34 @@ def _build_dataset(study: SynthStudy, pixels: np.ndarray, phone: str, address: s
     ds.RescaleSlope = 1
     ds.BurnedInAnnotation = "YES" if study.burned_in else "NO"
     ds.PixelData = pixels.tobytes()
+
+    # --- Nested sequences.
+    #
+    # Identifiers do not only live at the top level. Enhanced objects, structured
+    # reports and ordinary scheduled-procedure records all nest them one or two
+    # levels down, and a de-identifier that walks only the top level leaves them
+    # untouched while reporting success. These are generated so the recursion is
+    # exercised against something rather than assumed.
+    request_item = Dataset()
+    request_item.AccessionNumber = study.accession
+    request_item.RequestedProcedureID = f"RP{study.accession[-5:]}"
+    request_item.RequestingPhysician = study.referring_physician.replace("Dr. ", "")
+    request_item.StudyInstanceUID = study.study_uid
+
+    # A sequence inside a sequence: the level a shallow recursion misses.
+    referenced_item = Dataset()
+    referenced_item.ReferencedSOPInstanceUID = study.sop_uid
+    referenced_item.ReferencedSOPClassUID = ds.SOPClassUID
+    request_item.ReferencedImageSequence = Sequence([referenced_item])
+
+    ds.RequestAttributesSequence = Sequence([request_item])
+
+    equipment_item = Dataset()
+    equipment_item.InstitutionName = site.institution_name
+    equipment_item.InstitutionAddress = site.institution_address
+    equipment_item.StationName = f"{site.site_id}-CONSOLE-1"
+    equipment_item.DeviceSerialNumber = f"SN{1000 + study.patient.index}"
+    ds.ContributingEquipmentSequence = Sequence([equipment_item])
 
     ds.file_meta = FileMetaDataset()
     ds.file_meta.MediaStorageSOPClassUID = ds.SOPClassUID

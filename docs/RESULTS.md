@@ -64,7 +64,34 @@ Held-out half, n = 1,965 reports:
 | macro F1 | 0.881 |
 | exact-match rate | 0.936 |
 | Cohen's κ, pooled | **0.897** (almost perfect) |
-| normal-study detection F1 | **0.674** ← weakest result |
+| normal-study detection F1, strict | **0.854** |
+| normal-study detection F1, vocabulary-adjusted | **0.932** |
+
+### Normal detection is reported two ways, and the gap is the point
+
+An earlier version of this scored **0.674** and it was read as "a third of normal
+studies are missed". Measured, recall was 0.907 — the deficit was *precision*, 577
+studies wrongly called normal. Decomposing them found only **20** were canonical
+findings the extractor missed. The rest were **244 distinct MeSH terms with no
+counterpart in the nine-finding vocabulary**, 2,125 mentions: calcified granuloma
+(181), degenerative change (134), calcinosis (101), emphysema (37).
+
+That is a definitional mismatch, not an extraction defect. `NO_FINDING` here means
+"none of my nine findings"; Open-i `normal` means "nothing whatsoever indexed".
+
+The fix was to detect out-of-vocabulary abnormality and emit `OTHER`, so a study
+with a granuloma stops being labelled "nothing here" — an improvement to the
+*cohort*, not just to a metric:
+
+| | Before | After |
+|---|---|---|
+| normal detection, strict | 0.452 | **0.854** |
+| normal detection, vocabulary-adjusted | 0.563 | **0.932** |
+
+The strict figure still counts studies the schema cannot represent as errors. The
+adjusted figure excludes them. **The gap between the two is the vocabulary
+coverage gap**, and it is reported rather than resolved by picking whichever
+number flatters.
 
 κ is pooled over the contingency table rather than macro-averaged. Averaging
 would let tuberculosis, with 3 positives, weigh as heavily as atelectasis with
@@ -177,6 +204,24 @@ No header check can fix this; the information is not there. QC now warns that
 anatomical scope is unverified rather than implying the filter worked. A production
 chest cohort would need a body-part classifier as a fallback. Not built here.
 
+### Anatomical scope is now gated, not just noted
+
+`BodyPartExamined` was empty on all 400 real objects, so ingest could not verify
+that a chest pipeline was receiving chest studies — and the archive is a body-part
+dataset, so abdominal and pelvic films were admitted.
+
+Ingest now accepts an optional body-part classifier and quarantines with
+`BODY_PART_UNVERIFIED`; QC **fails the release** when more than 1% of studies have
+unverified scope. On this archive that check fails at 100%, which is the correct
+outcome: the cohort's anatomical scope genuinely is unverified.
+
+The classifier itself is **not** shipped. The UNIFESP dataset the fetch script
+retrieves contains only test images and a sample submission — the labelled train
+split sits behind competition rules acceptance, which is not something to click
+through on someone else's behalf. The gate is the part that prevents silent
+poisoning and it works with or without a model; a classifier trained on nothing
+would have been worse than none.
+
 ---
 
 ## 5. Throughput
@@ -253,9 +298,17 @@ Coverage on `deid`, the package where a defect is a disclosure, is 94%.
   synthetic evidence is what stands.
 - **That the extractor holds up on Indian partner-site prose.** Open-i is two
   Indiana hospital systems. House style varies; a new archive needs re-scoring.
-- **That normal-study detection is adequate.** At F1 0.674 roughly a third of
-  studies a radiologist called normal are not recognised. This is the weakest
-  number in the project and the first thing to fix.
+- **That the nine-finding vocabulary is sufficient.** 244 distinct MeSH terms in
+  one corpus fall outside it. They are now detected as `OTHER` rather than
+  silently dropped, but `OTHER` is a holding pen, not a label anyone can train on.
+- **That burned-in false positives have been fixed.** They have not. Two filters
+  were implemented and measured, and both were rejected: glyph sub-structure left
+  PHI surviving on 53 of 80 images (text lines contain one or two components at
+  the scale text is actually rendered, never the three the filter required), and a
+  larger minimum width could not be validated because 61% of real detections fall
+  in a band holding both spine edges and genuine short laterality markers, with no
+  ground truth to separate them. Over-redaction remains, in the safe direction,
+  and is reported rather than papered over.
 - **That the equity audit says anything about model fairness.** It is a property of
   the cohort. See §6.
 - **That throughput holds end to end.** The network is excluded. See §1.
