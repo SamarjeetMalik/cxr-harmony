@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Test
+        run: pytest -q --cov=cxr_harmony --cov-report=term-missing
+
+  pipeline:
+    name: End-to-end run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install -e .
+
+      # The demonstration is only worth anything if it is run on every change,
+      # so the whole pipeline executes here and the verification stage — which
+      # exits non-zero on any surviving identifier, any broken audit link, or any
+      # release whose digest no longer matches — is what gates the build.
+      - name: Run the pipeline end to end
+        run: |
+          cxr-harmony synth --out work/incoming --seed 20260731 --image-size 512
+          cxr-harmony ingest --src work/incoming --work work
+          cxr-harmony deid --work work
+          cxr-harmony reports --work work
+          cxr-harmony harmonize --work work --configs configs/sites
+          cxr-harmony catalog --work work
+          cxr-harmony qc --work work --strict
+          cxr-harmony release --work work --version v1.0.0
+          cxr-harmony verify --work work
+
+      - name: Upload the QC report and datasheet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-output
+          path: |
+            work/qc/report.md
+            work/qc/governance.json
+            work/releases/v1.0.0/datasheet.md
+            work/releases/v1.0.0/release.json
+          if-no-files-found: warn
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t cxr-harmony:ci .
+
+      - name: Check the entrypoint runs
+        run: docker run --rm cxr-harmony:ci --help

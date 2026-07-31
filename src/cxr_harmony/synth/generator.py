@@ -144,6 +144,11 @@ def _assign_studies(
             mrn_counters[site.site_id] += 1
             n_studies = rng.choices([1, 2, 3], weights=[6, 3, 1])[0]
             base_date = date(2023, 1, 1) + timedelta(days=rng.randint(0, 900))
+            # A paediatric patient can otherwise be handed a study that predates
+            # their own birth, which produces an unresolvable age downstream.
+            earliest = patient.birth_date + timedelta(days=1)
+            if base_date < earliest:
+                base_date = earliest
 
             mrn = site.mrn_template.format(n=mrn_counters[site.site_id], year=base_date.year)
             patient.mrns[site.site_id] = mrn

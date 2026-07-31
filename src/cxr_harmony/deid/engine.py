@@ -81,8 +81,18 @@ class DeidResult:
         return sum(1 for r in self.records if r.pixel_redacted)
 
     @property
-    def n_cross_site_patients(self) -> int:
+    def n_nationally_identified(self) -> int:
+        """Patients whose pseudonym came from a national ID, so linkage is *possible*.
+
+        Not the same as the number actually imaged at two hospitals — most of
+        these appear at one site and simply happen to have an ABHA recorded.
+        """
         return len({r.pseudo_patient_id for r in self.records if r.linked_across_sites})
+
+    @property
+    def n_cross_site_patients(self) -> int:
+        """Patients whose studies actually span more than one site."""
+        return sum(1 for sites in self.patient_sites().values() if len(sites) > 1)
 
     def patient_sites(self) -> dict[str, set[str]]:
         mapping: dict[str, set[str]] = {}
