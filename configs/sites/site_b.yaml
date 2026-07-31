@@ -1,0 +1,63 @@
+# Meridian Institute of Medical Sciences, Kochi.
+#
+# The awkward one. ViewPosition is empty and the projection has to be recovered
+# from a free-text SeriesDescription, so this site is configured with ordered
+# patterns rather than an exact map. Order matters: 'CHEST AP SUPINE PORTABLE'
+# contains neither a standalone 'PA' nor a word boundary that would let a naive
+# 'PA' rule avoid matching 'PORTABLE', so the AP rule is tried first.
+#
+# Dates arrive as DD-MM-YYYY from a private block, and labels come in a sidecar
+# CSV keyed on accession number rather than in the header at all.
+site_id: SITE_B
+description: >-
+  Tertiary centre, legacy RIS export. Projection in SeriesDescription (0008,103E),
+  dates DD-MM-YYYY from a private block, labels in a sidecar CSV.
+
+view_position:
+  patterns:
+    - match: '\bAP\b'
+      value: AP
+    - match: '\bPA\b'
+      value: PA
+    - match: '\bLAT(ERAL)?\b'
+      value: LATERAL
+    - match: 'DECUB'
+      value: LATERAL_DECUBITUS
+  default: UNKNOWN
+
+laterality:
+  map:
+    LEFT: L
+    RIGHT: R
+    L: L
+    R: R
+  default: NA
+
+sex:
+  map:
+    MALE: M
+    FEMALE: F
+    OTHER: O
+  default: U
+
+labels:
+  source: sidecar_csv
+  separator: "|"
+  sidecar_file: labels.csv
+  sidecar_key_column: accession_no
+  sidecar_value_column: findings_codes
+  map:
+    NAD: NO_FINDING
+    CM: CARDIOMEGALY
+    PE: PLEURAL_EFFUSION
+    CONS: CONSOLIDATION
+    PTX: PNEUMOTHORAX
+    EDEMA: PULMONARY_EDEMA
+    ATEL: ATELECTASIS
+    NOD: NODULE
+    FRAC: FRACTURE
+    KOCHS: TUBERCULOSIS
+
+date_formats:
+  - "%d-%m-%Y"
+  - "%Y%m%d"

@@ -1,0 +1,46 @@
+# Northstar Diagnostics Centre, Guwahati.
+#
+# A standalone imaging centre on an older CR system. Two things need care:
+#
+#  * ViewPosition carries a legacy beam-direction arrow, 'P->A' meaning the beam
+#    passes posterior to anterior, i.e. a PA film. It is not a conformant CS
+#    value and pydicom warns about it, but it is what the archive contains.
+#  * Sex is recorded with HL7 v2 administrative codes (1 male, 2 female) rather
+#    than the DICOM CS values, which is a silent hazard: '1' and '2' are valid
+#    strings and nothing rejects them, so an unconfigured reader would simply
+#    produce a cohort with no usable sex variable.
+#
+# This site ships no structured labels at all; everything comes from report prose.
+site_id: SITE_C
+description: >-
+  Standalone imaging centre, legacy CR export. Arrow-notation projection,
+  HL7 numeric sex codes, labels only in report text.
+
+view_position:
+  map:
+    "P->A": PA
+    "A->P": AP
+    "PA": PA
+    "AP": AP
+    "LAT": LATERAL
+  default: UNKNOWN
+
+laterality:
+  map:
+    LEFT: L
+    RIGHT: R
+  default: NA
+
+sex:
+  map:
+    "1": M
+    "2": F
+    "9": U
+  default: U
+
+labels:
+  source: report
+  map: {}
+
+date_formats:
+  - "%Y%m%d"

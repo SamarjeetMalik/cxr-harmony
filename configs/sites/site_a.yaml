@@ -1,0 +1,52 @@
+# Sunrise Medical College and Hospital, Pune.
+#
+# The most conformant of the three deliveries: ViewPosition is populated, dates
+# are proper DICOM DA, and labels arrive in the image header. Its one quirk is
+# 'LL' for a lateral projection.
+site_id: SITE_A
+description: >-
+  Teaching hospital, conformant DX export. Projection in ViewPosition (0018,5101),
+  labels in ImageComments (0020,4000), standard DA dates.
+
+view_position:
+  map:
+    PA: PA
+    AP: AP
+    LL: LATERAL
+    LAT: LATERAL
+    LATERAL: LATERAL
+  default: UNKNOWN
+
+laterality:
+  map:
+    L: L
+    R: R
+    LEFT: L
+    RIGHT: R
+  default: NA
+
+sex:
+  map:
+    M: M
+    F: F
+    O: O
+  default: U
+
+labels:
+  source: image_comments
+  separator: ";"
+  map:
+    "No Finding": NO_FINDING
+    "Cardiomegaly": CARDIOMEGALY
+    "Pleural Effusion": PLEURAL_EFFUSION
+    "Consolidation": CONSOLIDATION
+    "Pneumothorax": PNEUMOTHORAX
+    "Pulmonary Edema": PULMONARY_EDEMA
+    "Pulmonary Oedema": PULMONARY_EDEMA
+    "Atelectasis": ATELECTASIS
+    "Nodule": NODULE
+    "Rib Fracture": FRACTURE
+    "Pulmonary Tuberculosis": TUBERCULOSIS
+
+date_formats:
+  - "%Y%m%d"
