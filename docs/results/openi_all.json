@@ -1,0 +1,102 @@
+{
+  "exact_match_rate": 0.934,
+  "macro_f1": 0.8723,
+  "micro": {
+    "f1": 0.9024,
+    "fn": 124,
+    "fp": 157,
+    "precision": 0.8922,
+    "recall": 0.9129,
+    "tp": 1299
+  },
+  "n_reports": 3927,
+  "normal_detection": {
+    "f1": 0.6772,
+    "precision": 0.5392,
+    "recall": 0.9101,
+    "support": 1457
+  },
+  "per_finding": {
+    "ATELECTASIS": {
+      "f1": 0.9743,
+      "fn": 13,
+      "fp": 7,
+      "precision": 0.9819,
+      "recall": 0.9668,
+      "support": 392,
+      "tp": 379
+    },
+    "CARDIOMEGALY": {
+      "f1": 0.8745,
+      "fn": 48,
+      "fp": 47,
+      "precision": 0.8757,
+      "recall": 0.8734,
+      "support": 379,
+      "tp": 331
+    },
+    "CONSOLIDATION": {
+      "f1": 0.9005,
+      "fn": 4,
+      "fp": 17,
+      "precision": 0.8482,
+      "recall": 0.9596,
+      "support": 99,
+      "tp": 95
+    },
+    "FRACTURE": {
+      "f1": 0.9014,
+      "fn": 3,
+      "fp": 18,
+      "precision": 0.8421,
+      "recall": 0.9697,
+      "support": 99,
+      "tp": 96
+    },
+    "NODULE": {
+      "f1": 0.8281,
+      "fn": 20,
+      "fp": 24,
+      "precision": 0.8154,
+      "recall": 0.8413,
+      "support": 126,
+      "tp": 106
+    },
+    "PLEURAL_EFFUSION": {
+      "f1": 0.916,
+      "fn": 17,
+      "fp": 14,
+      "precision": 0.9235,
+      "recall": 0.9086,
+      "support": 186,
+      "tp": 169
+    },
+    "PNEUMOTHORAX": {
+      "f1": 0.8163,
+      "fn": 3,
+      "fp": 6,
+      "precision": 0.7692,
+      "recall": 0.8696,
+      "support": 23,
+      "tp": 20
+    },
+    "PULMONARY_EDEMA": {
+      "f1": 0.8398,
+      "fn": 15,
+      "fp": 22,
+      "precision": 0.8151,
+      "recall": 0.8661,
+      "support": 112,
+      "tp": 97
+    },
+    "TUBERCULOSIS": {
+      "f1": 0.8,
+      "fn": 1,
+      "fp": 2,
+      "precision": 0.75,
+      "recall": 0.8571,
+      "support": 7,
+      "tp": 6
+    }
+  }
+}

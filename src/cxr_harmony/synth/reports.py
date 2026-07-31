@@ -29,8 +29,13 @@ FINDING_SENTENCES: dict[Finding, tuple[str, ...]] = {
         "There is a moderate {side}-sided pleural fluid collection.",
         "Free fluid is seen in the {side} pleural space.",
     ),
+    # Phrased as the diagnosis rather than as the descriptor. Evaluation against
+    # the Open-i corpus showed that "air-space opacity" and "infiltrate" are
+    # indexed by radiologist annotators under a separate Opacity heading, not as
+    # consolidation, so generating them here would have taught the extractor a
+    # conflation that real annotation does not make.
     Finding.CONSOLIDATION: (
-        "Patchy air-space opacity is seen in the {side} lower zone.",
+        "Patchy consolidation is seen in the {side} lower zone.",
         "There is dense consolidation involving the {side} mid zone.",
         "Homogeneous opacity with air bronchograms in the {side} lung field.",
     ),

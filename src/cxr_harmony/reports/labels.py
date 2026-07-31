@@ -45,10 +45,14 @@ from ..schema.vocab import Finding
 FINDING_PATTERNS: dict[Finding, tuple[str, ...]] = {
     Finding.CARDIOMEGALY: (
         r"cardiomegaly",
-        r"cardiac\s+silhouette\s+is\s+enlarged",
-        r"enlarge\w*\s+of\s+the\s+cardiac\s+(?:shadow|silhouette)",
+        # Real reports overwhelmingly say "the heart is enlarged", with an adverb
+        # of degree in between, rather than naming the finding.
+        r"\bheart\s+(?:size\s+)?(?:is|appears|remains)\s+(?:\w+\s+){0,3}enlarged",
+        r"cardiac\s+silhouette\s+is\s+(?:\w+\s+){0,2}enlarged",
+        r"enlarge\w*\s+of\s+the\s+(?:cardiac|heart)",
+        r"cardiac\s+enlargement",
+        r"enlarged\s+(?:cardiac|cardiomediastinal)\s+(?:shadow|silhouette)",
         r"cardiothoracic\s+ratio\s+(?:exceed|>|greater)",
-        r"enlarged\s+cardiac\s+(?:shadow|silhouette)",
     ),
     Finding.PLEURAL_EFFUSION: (
         r"pleural\s+effusion",
@@ -58,10 +62,15 @@ FINDING_PATTERNS: dict[Finding, tuple[str, ...]] = {
         r"\beffusion\b",
     ),
     Finding.CONSOLIDATION: (
-        r"consolidation",
-        r"air[-\s]space\s+opacity",
+        r"consolidat",  # consolidation, consolidative
         r"air\s+bronchograms?",
-        r"homogeneous\s+opacity",
+        r"\bpneumonia\b",
+        # Deliberately *not* included: "airspace disease", "infiltrate", "patchy
+        # opacity". Those are descriptors of increased density, not the diagnosis
+        # of consolidation, and the Open-i annotators index them under a separate
+        # "Opacity" heading. Including them raised recall to 0.98 but collapsed
+        # precision to 0.31 (220 false positives); restricting to consolidation
+        # proper gives 0.85/0.96. A radiologist would draw the same distinction.
     ),
     Finding.PNEUMOTHORAX: (
         r"pneumothorax",
@@ -69,12 +78,19 @@ FINDING_PATTERNS: dict[Finding, tuple[str, ...]] = {
         r"absent\s+lung\s+markings",
     ),
     Finding.PULMONARY_EDEMA: (
-        r"pulmonary\s+(?:o?edema)",
+        r"\bo?edema\b",
         r"perihilar\s+haziness",
         r"upper\s+lobe\s+diversion",
         r"septal\s+thickening",
         r"fluid\s+overload",
-        r"venous\s+congestion",
+        # Open-i annotates "Pulmonary Congestion" as oedema; reports express it as
+        # vascular congestion or prominence far more often than as oedema.
+        r"(?:vascular|venous|pulmonary)\s+congestion",
+        r"vascular\s+prominence",
+        r"prominence\s+of\s+the\s+pulmonary\s+vascul",
+        r"interstitial\s+prominence",
+        r"cephalization",
+        r"pulmonary\s+venous\s+hypertension",
     ),
     Finding.ATELECTASIS: (
         r"atelectasis",
@@ -105,25 +121,60 @@ FINDING_PATTERNS: dict[Finding, tuple[str, ...]] = {
     ),
 }
 
-#: Explicit statements that the study is normal.
+#: Explicit statements that the study, as a whole, is normal.
+#:
+#: Widened against the Open-i corpus. The original set required "lung *fields* are
+#: clear", which real reports almost never write — they say "Lungs are clear",
+#: "the lungs are well expanded and clear", or close with "No acute cardiopulmonary
+#: disease". Normal-study recall was 0.31 before this was corrected.
+#:
+#: These are only consulted when no positive finding was detected, so a broad cue
+#: cannot override a real observation.
 NORMAL_PATTERNS: tuple[str, ...] = (
-    r"no\s+significant\s+abnormality",
-    r"lung\s+fields?\s+(?:are|is)\s+clear",
-    r"within\s+normal\s+limits",
-    r"unremarkable\s+(?:study|examination|radiograph)",
+    r"no\s+significant\s+abnormalit",
     r"no\s+abnormality\s+detected",
+    r"\blungs?\s+(?:\w+\s+){0,3}(?:are|is)\s+(?:\w+\s+){0,3}clear\b",
+    r"\blungs?\s+(?:are|is)\s+clear\b",
+    r"no\s+acute\s+cardiopulmonary",
+    r"no\s+acute\s+(?:abnormalit|finding|disease|process|infiltrat|osseous)",
+    r"unremarkable\s+(?:study|examination|radiograph|chest)",
+    r"normal\s+chest\s+(?:x-?\w*|radiograph|examination)?",
+    r"negative\s+chest",
+    r"within\s+normal\s+limits",
 )
 
 #: Cues that open a negated span.
+#:
+#: ``clear of`` was added after evaluation against the Open-i corpus: the
+#: construction "the lungs are clear of focal airspace disease, pneumothorax, or
+#: pleural effusion" is boilerplate in real normal reports, and without this cue it
+#: asserts all three findings at once. It alone accounted for the majority of
+#: false-positive pneumothorax calls, which is the error a radiologist would find
+#: least forgivable.
+#:
+#: ``resolved`` covers the other direction — "the left apical pneumothorax has
+#: resolved" describes a finding that is no longer present.
 NEGATION_CUES: tuple[str, ...] = (
     r"\bno\b",
     r"\bnot\b",
     r"\bwithout\b",
     r"\bnegative\s+for\b",
     r"\bfree\s+of\b",
+    r"\bclear\s+of\b",
+    r"\bclear,\s+and\s+without\b",
     r"\babsence\s+of\b",
     r"\bruled?\s+out\b",
     r"\bnor\b",
+)
+
+#: Cues that a finding, once present, no longer is. Applied to the whole sentence
+#: rather than as a prefix, since "the pneumothorax has resolved" places the cue
+#: after the finding rather than before it.
+RESOLUTION_CUES: tuple[str, ...] = (
+    r"\bhas\s+resolved\b",
+    r"\bhave\s+resolved\b",
+    r"\bresolution\s+of\b",
+    r"\bno\s+longer\s+(?:seen|present|visualized|identified)\b",
 )
 
 #: Cues that close a negated span before the sentence ends.
@@ -140,6 +191,7 @@ TERMINATION_CUES: tuple[str, ...] = (
 
 _NEG_RE = re.compile("|".join(NEGATION_CUES), re.I)
 _TERM_RE = re.compile("|".join(TERMINATION_CUES), re.I)
+_RESOLVED_RE = re.compile("|".join(RESOLUTION_CUES), re.I)
 _SENTENCE_RE = re.compile(r"(?<=[.;:])\s+|\n+")
 
 _COMPILED: dict[Finding, tuple[re.Pattern[str], ...]] = {
@@ -159,7 +211,13 @@ class ExtractedLabel:
 
 
 def _is_negated(sentence: str, start: int) -> bool:
-    """True when a negation cue governs position ``start`` in ``sentence``."""
+    """True when the sentence denies the finding at position ``start``."""
+    # A resolution statement negates regardless of position: "the left apical
+    # pneumothorax has resolved" places the cue after the finding, so a
+    # prefix-only scope would read it as an assertion.
+    if _RESOLVED_RE.search(sentence):
+        return True
+
     prefix = sentence[:start]
     negations = list(_NEG_RE.finditer(prefix))
     if not negations:

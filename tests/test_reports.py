@@ -139,7 +139,13 @@ def test_a_positive_elsewhere_outweighs_a_denial():
     [
         ("The cardiac silhouette is enlarged.", Finding.CARDIOMEGALY),
         ("Blunting of the left costophrenic angle is noted.", Finding.PLEURAL_EFFUSION),
-        ("Patchy air-space opacity is seen in the right lower zone.", Finding.CONSOLIDATION),
+        ("Patchy consolidation is seen in the right lower zone.", Finding.CONSOLIDATION),
+        (
+            "Homogeneous opacity with air bronchograms in the left lung field.",
+            Finding.CONSOLIDATION,
+        ),
+        ("The heart is mildly enlarged.", Finding.CARDIOMEGALY),
+        ("Pulmonary vascular congestion is again noted.", Finding.PULMONARY_EDEMA),
         ("A thin visceral pleural line is visible along the left apex.", Finding.PNEUMOTHORAX),
         ("Bilateral perihilar haziness with upper lobe diversion.", Finding.PULMONARY_EDEMA),
         ("There is volume loss in the left lower lobe.", Finding.ATELECTASIS),
@@ -287,3 +293,105 @@ def test_redactions_are_counted_for_audit(processed):
     _, _, _, result = processed
     assert result.total_redactions > 0
     assert all(r.redaction_count > 0 for r in result.records)
+
+
+# --- Behaviours learned from real prose (Open-i corpus) ---------------------
+
+
+def test_clear_of_is_a_negation():
+    """Boilerplate in real normal reports; without this cue it asserts three findings.
+
+    This single construction accounted for the majority of false-positive
+    pneumothorax calls before it was handled.
+    """
+    text = "The lungs are clear of focal airspace disease, pneumothorax, or pleural effusion."
+    findings = positive_findings(text)
+    assert Finding.PNEUMOTHORAX not in findings
+    assert Finding.PLEURAL_EFFUSION not in findings
+    assert Finding.CONSOLIDATION not in findings
+    # The sentence is itself an assertion of normality, so that is the right label.
+    assert findings == [Finding.NO_FINDING]
+
+
+def test_grossly_clear_of_is_also_a_negation():
+    text = (
+        "The lungs are grossly clear of focal airspace disease, "
+        "pneumothorax or pleural effusion."
+    )
+    assert Finding.PNEUMOTHORAX not in positive_findings(text)
+
+
+def test_a_resolved_finding_is_not_asserted():
+    """The cue follows the finding, so a prefix-only negation scope misses it."""
+    assert Finding.PNEUMOTHORAX not in positive_findings(
+        "The left apical pneumothorax has resolved."
+    )
+    assert Finding.PLEURAL_EFFUSION not in positive_findings(
+        "Interval resolution of the right pleural effusion."
+    )
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "The heart is mildly enlarged.",
+        "The heart is again mildly enlarged.",
+        "Heart size is moderately enlarged.",
+        "There is stable enlargement of the cardiac silhouette.",
+        "Mild cardiac enlargement is noted.",
+    ],
+)
+def test_cardiomegaly_is_recognised_as_radiologists_write_it(sentence):
+    """Real reports say 'the heart is enlarged', not 'cardiomegaly'."""
+    assert Finding.CARDIOMEGALY in positive_findings(sentence)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Pulmonary vascular congestion again noted.",
+        "There is mild vascular prominence.",
+        "Mild diffuse interstitial prominence suggestive of edema.",
+    ],
+)
+def test_congestion_language_maps_to_oedema(sentence):
+    """Open-i indexes 'Pulmonary Congestion' as oedema; reports rarely say oedema."""
+    assert Finding.PULMONARY_EDEMA in positive_findings(sentence)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Lungs are clear bilaterally.",
+        "The lungs are well expanded and clear.",
+        "No acute cardiopulmonary disease.",
+        "No acute cardiopulmonary abnormality.",
+        "Normal chest radiograph.",
+    ],
+)
+def test_normal_studies_are_recognised_as_radiologists_write_them(sentence):
+    """The original cues required 'lung fields are clear', which reports rarely write."""
+    assert positive_findings(sentence) == [Finding.NO_FINDING]
+
+
+def test_opacity_descriptors_are_not_called_consolidation():
+    """'Airspace disease' is a descriptor; consolidation is a diagnosis.
+
+    Conflating them scored recall 0.98 but precision 0.31 against radiologist
+    annotation. Real annotators index opacity under a separate heading.
+    """
+    for descriptor in (
+        "There is focal airspace disease in the right middle lobe.",
+        "Streaky and patchy bibasilar opacities are noted.",
+        "There is a vague increased opacity within the left lower lobe.",
+    ):
+        assert Finding.CONSOLIDATION not in positive_findings(descriptor)
+
+
+def test_consolidation_proper_is_still_recognised():
+    for sentence in (
+        "There is dense consolidation involving the left mid zone.",
+        "Homogeneous opacity with air bronchograms in the right lung field.",
+        "Findings are compatible with pneumonia.",
+    ):
+        assert Finding.CONSOLIDATION in positive_findings(sentence)

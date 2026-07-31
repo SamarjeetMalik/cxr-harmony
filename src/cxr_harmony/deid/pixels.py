@@ -67,8 +67,10 @@ class DetectionParams:
     #: responses, and at the sizes text is actually rendered those responses
     #: nearly fill the line's bounding box. Anatomical and noise edges that happen
     #: to survive the closing are, by contrast, sparse and stringy. Measured on
-    #: the synthetic corpus at 128–1024 px, text lines score 0.55–1.00 and
-    #: non-text components 0.16–0.35, so the threshold sits in a wide empty gap.
+    #: 60 synthetic images, text lines score 0.73–1.00 and non-text components
+    #: 0.16–0.38, so the threshold sits in an empty gap of width 0.36. Verified to
+    #: transfer: on 400 real hospital films it found Portuguese burned-in
+    #: annotation with no retuning.
     #:
     #: This must be measured before the closing, not after: closing fills a text
     #: line by construction, which drives every component to ~0.99 and destroys

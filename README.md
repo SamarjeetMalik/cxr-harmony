@@ -6,20 +6,40 @@ divergent conventions.
 
 [![CI](https://github.com/SamarjeetMalik/cxr-harmony/actions/workflows/ci.yml/badge.svg)](https://github.com/SamarjeetMalik/cxr-harmony/actions/workflows/ci.yml)
 
-> **The demonstration corpus is synthetic.** No patient data is used, contained or
-> distributed by this repository. The generator in `src/cxr_harmony/synth/`
-> fabricates DICOM studies carrying realistic-looking identifiers — names, MRNs,
-> national health IDs, burned-in pixel annotation — precisely so that the
-> de-identification stage has something real to remove. Public chest X-ray corpora
-> are already de-identified, which makes them useless for demonstrating a
-> de-identifier.
+> **The demonstration corpus is synthetic; the evaluation is not.** No patient data
+> is distributed by this repository. The generator in `src/cxr_harmony/synth/`
+> fabricates DICOM carrying realistic identifiers — names, MRNs, national health
+> IDs, burned-in pixel annotation — so the de-identification stage has something
+> real to remove, which public corpora cannot provide because they are already
+> de-identified.
+>
+> The pipeline is then **evaluated against two real public corpora**: 3,955
+> radiologist reports from Open-i / Indiana University, and 400 real hospital DICOM
+> objects from UNIFESP. See **[docs/real-data-evaluation.md](docs/real-data-evaluation.md)**.
+> Real data found a bug synthetic data structurally could not.
 
 ```bash
 pip install -e ".[dev]" && make demo
 ```
 
-That command generates a three-site delivery and runs the whole pipeline over it,
-finishing with an independent verification pass. It takes about 40 seconds.
+Generates a three-site delivery, runs the whole pipeline, and finishes with an
+independent verification pass. About 40 seconds.
+
+![Burned-in PHI removal](docs/figures/redaction_before_after.png)
+
+---
+
+## Results at a glance
+
+| | |
+|---|---|
+| Identifiers surviving de-identification (synthetic, ground truth known) | **0 of 145** |
+| Burned-in text pixels surviving redaction | **0** |
+| Cross-site patients correctly collapsed to one identity | **8 of 8** |
+| Label extraction on **real** radiologist prose (held-out, n=1,965) | **micro F1 0.901** |
+| Burned-in text found in **real** hospital images | **71 of 400**, zero-shot across language |
+| Real archive mixing greyscale conventions, silently | **372 MONOCHROME1 : 28 MONOCHROME2** |
+| Tests | **263** |
 
 ---
 
@@ -93,13 +113,22 @@ recognised as one. Where it is absent, the pseudonym stays site-scoped and the
 records stay separate — the conservative outcome, reported in QC rather than
 guessed at.
 
+![Detector separation](docs/figures/detection_separation.png)
+
 **Burned-in text is found by edge density, not brightness.** On a chest
 radiograph the spine, mediastinum and subdiaphragmatic region saturate to the
 same value the text is drawn at, so a threshold finds the anatomy and misses the
-name. Measured on the corpus at 128–1024 px, merged text lines score 0.55–1.00
-edge density against 0.16–0.35 for non-text components — a wide empty gap to put
-a threshold in. Redaction zeroes the region; blurring and pixelation are both
+name. Measured over 60 images, merged text lines score 0.73–1.00 edge density
+against 0.16–0.38 for non-text components — an empty gap of 0.36 to put a
+threshold in. Redaction zeroes the region; blurring and pixelation are both
 invertible often enough not to be relied on.
+
+It transfers: tuned on synthetic English overlays, it found real Portuguese
+annotation on real Brazilian hospital films (`DECUBITO LATERAL DIREITO`,
+`OBLIQUA ESQUERDA`) with no retuning, because it keys on the spatial frequency of
+glyph strokes rather than on their meaning.
+
+![Split stability](docs/figures/split_stability.png)
 
 **Splits are per patient, and assigned by hash threshold.** A patient with a
 baseline and two follow-ups contributes three studies; split them independently
@@ -153,7 +182,7 @@ across sites rather than only within one.
 
 ## Verification
 
-Correctness claims here are tested, not asserted. 237 tests, and the ones that
+Correctness claims here are tested, not asserted. 263 tests, and the ones that
 matter most break something first — a QC check that has never been observed to
 fail is not evidence of anything.
 
@@ -188,6 +217,8 @@ The audit log is hash-chained. That is tamper-*evident*, not tamper-proof: anyon
 who can write the file can rewrite the chain. It defends against the realistic
 failure, which is one entry quietly edited months later.
 
+![Harmonisation](docs/figures/harmonisation.png)
+
 ## Adding a fourth site
 
 Write `configs/sites/site_d.yaml` and run `harmonize`. No code change:
@@ -220,19 +251,25 @@ question to ask them rather than silent attrition.
 
 Stated because they bear on whether any of this is usable, not for form's sake.
 
-- **The label extractor's perfect score does not generalise.** It scores 1.000
-  precision and recall over 151 synthetic reports, but the phrase bank and the
-  report generator share an author, so that measures internal consistency. Real
-  reports hedge ("cannot exclude", "possibly represents"), carry dictation errors,
-  and vary by house style. On real prose a rule extractor of this shape would land
-  far lower and would need scoring against radiologist adjudication before its
-  output entered a training set. What the score does establish is narrow but real:
-  the negation scope and the section restriction work, which is where this kind of
-  extractor usually fails silently.
-- **Burned-in text detection is tuned on synthetic overlays.** Real consoles use
-  varied fonts, positions, rotations and semi-transparent overlays. The
-  geometric approach should transfer, but the thresholds would need
-  re-establishing against real films, and the failure mode is a missed name.
+- **The label extractor scores 0.901 on real prose, not 1.000.** The synthetic
+  score is 1.000 because the phrase bank and the report generator share an author.
+  Measured against radiologist MeSH annotation on a held-out half of Open-i, it is
+  micro F1 0.901 — and **normal-study detection is only 0.674**, meaning about a
+  third of studies a radiologist called normal are not recognised as such. That is
+  the weakest number in the project and the first thing to fix. Real prose also
+  exposed four outright defects, all now regression-tested; see
+  [docs/real-data-evaluation.md](docs/real-data-evaluation.md).
+- **Open-i is two Indiana hospital systems.** House style varies, and Indian
+  partner-site prose will differ from it. A new archive would need re-scoring.
+- **Burned-in text detection transferred, but is not clean.** It found real
+  Portuguese annotation on real Brazilian films having been tuned on synthetic
+  English, which is genuine zero-shot transfer. It also placed occasional small
+  spurious boxes over high-contrast spine anatomy. Over-redaction is the safe error
+  direction for a PHI tool, but the false-positive rate on real anatomy is not zero.
+- **Anatomical scope can be unverifiable.** `BodyPartExamined` was empty on all 400
+  real objects surveyed, so the ingest filter could not do its job and non-chest
+  studies entered the cohort. QC now warns rather than pretending otherwise, but a
+  production chest cohort needs a body-part classifier as a fallback. Not built here.
 - **Access control is application-level.** It constrains the query helpers, not
   someone holding the SQLite file. That boundary is infrastructural.
 - **No OCR fallback.** Text detection finds *where* characters are, not what they
@@ -259,8 +296,14 @@ src/cxr_harmony/
   qc/           checks and reporting
   release/      content-addressed releases, leakage-free splits
   governance/   hash-chained audit log, DPDP mapping, verification
+  adapters/     readers for real public corpora (Open-i)
 configs/sites/  one YAML per contributing site
+scripts/        figure generation, real-data fetch and evaluation
+docs/           governance, real-data evaluation, figures, results
 ```
+
+Figures are regenerated from the pipeline itself with `make figures`, so a claim
+in this README and the picture illustrating it cannot drift apart.
 
 ## Licence
 

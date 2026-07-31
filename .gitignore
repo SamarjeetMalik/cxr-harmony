@@ -45,3 +45,7 @@ Thumbs.db
 # Local scratch
 scratchpad/
 *.plan.md
+
+# Real corpora are fetched on demand, never committed (see scripts/fetch_real_data.py)
+realdata/
+work-real/

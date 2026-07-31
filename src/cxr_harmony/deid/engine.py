@@ -13,6 +13,7 @@ from pydicom.uid import ExplicitVRLittleEndian
 
 from ..workspace import Workspace, read_jsonl, write_jsonl
 from .extract import SiteFacts, extract_facts, read_linkage_identifiers
+from .photometric import normalise_photometric
 from .pixels import DetectionParams, clean_pixel_data
 from .profile import (
     DEIDENTIFICATION_METHOD,
@@ -44,6 +45,8 @@ class DeidRecord:
     photometric_interpretation: str
     pixel_redacted: bool
     redacted_regions: list[dict]
+    #: True when the source used MONOCHROME1 and was converted to MONOCHROME2.
+    photometric_inverted: bool
     source_path: str
 
     def to_dict(self) -> dict:
@@ -62,6 +65,7 @@ class DeidRecord:
             "photometric_interpretation": self.photometric_interpretation,
             "pixel_redacted": self.pixel_redacted,
             "redacted_regions": self.redacted_regions,
+            "photometric_inverted": self.photometric_inverted,
             "source_path": self.source_path,
         }
 
@@ -79,6 +83,11 @@ class DeidResult:
     @property
     def n_redacted(self) -> int:
         return sum(1 for r in self.records if r.pixel_redacted)
+
+    @property
+    def n_photometric_converted(self) -> int:
+        """Objects that arrived as MONOCHROME1 and were inverted."""
+        return sum(1 for r in self.records if r.photometric_inverted)
 
     @property
     def n_nationally_identified(self) -> int:
@@ -169,7 +178,7 @@ def deidentify_dataset(
     site_id: str,
     age_years: int | None = None,
     detection_params: DetectionParams | None = None,
-) -> tuple[pydicom.Dataset, str, bool, list[dict]]:
+) -> tuple[pydicom.Dataset, str, bool, list[dict], bool]:
     """De-identify one dataset in place.
 
     ``site_id`` scopes the fallback pseudonym for patients with no national
@@ -177,7 +186,8 @@ def deidentify_dataset(
     which is about to be removed and which sites spell inconsistently between
     batches anyway.
 
-    Returns ``(dataset, pseudo_patient_id, linked_across_sites, redacted_regions)``.
+    Returns ``(dataset, pseudo_patient_id, linked_across_sites, redacted_regions,
+    photometric_inverted)``.
     """
     national_id, local_mrn = read_linkage_identifiers(ds)
     pseudo_id, linked = pseudo.patient_pseudonym(
@@ -191,6 +201,12 @@ def deidentify_dataset(
 
     # Clean Pixel Data. Done after the header work so that a failure here cannot
     # leave a half-de-identified header on disk.
+    # Photometric normalisation precedes redaction, for two reasons: the cohort
+    # must not mix inverted and non-inverted images, and "black out this region"
+    # means writing the value that renders black, which is zero only under
+    # MONOCHROME2.
+    inverted = normalise_photometric(ds)
+
     regions: list[dict] = []
     if "PixelData" in ds:
         cleaned, found = clean_pixel_data(ds.pixel_array, detection_params)
@@ -216,7 +232,7 @@ def deidentify_dataset(
             if tag in ds.file_meta:
                 del ds.file_meta[tag]
 
-    return ds, pseudo_id, linked, regions
+    return ds, pseudo_id, linked, regions, inverted
 
 
 def deidentify(
@@ -245,7 +261,7 @@ def deidentify(
             str(ds.SOPInstanceUID),
         )
 
-        ds, pseudo_id, linked, regions = deidentify_dataset(
+        ds, pseudo_id, linked, regions, inverted = deidentify_dataset(
             ds,
             pseudo=pseudo,
             site_id=site_id,
@@ -285,6 +301,7 @@ def deidentify(
                 bits_stored=int(ds.BitsStored),
                 photometric_interpretation=str(ds.PhotometricInterpretation),
                 pixel_redacted=bool(regions),
+                photometric_inverted=inverted,
                 redacted_regions=regions,
                 source_path=source_path,
             )

@@ -152,6 +152,20 @@ def run_checks(
         )
     )
 
+    photometric = Counter(i.photometric_interpretation for i in dataset.instances)
+    report.checks.append(
+        Check(
+            "photometric_interpretation_uniform",
+            Severity.FAIL,
+            len(photometric) <= 1,
+            "the cohort mixes greyscale conventions: "
+            + ", ".join(f"{k}={v}" for k, v in sorted(photometric.items()))
+            + ". MONOCHROME1 renders inverted, so a model would see part of the "
+            "cohort as a photographic negative",
+            {"counts": dict(sorted(photometric.items()))},
+        )
+    )
+
     digests = [i.sha256 for i in dataset.instances]
     duplicate_digests = [d for d, n in Counter(digests).items() if n > 1]
     report.checks.append(
@@ -185,6 +199,25 @@ def run_checks(
             not unknown_view,
             f"{len(unknown_view)} of {len(dataset.series)} series have an unresolved projection",
             {"examples": unknown_view[:5]},
+        )
+    )
+
+    # Ingest tolerates an empty BodyPartExamined, because a populated mismatch is
+    # disqualifying but an absent value is merely uninformative. On a real archive
+    # that tolerance has teeth: a 400-object hospital export was surveyed with the
+    # tag empty on every single object, so the filter admitted abdominal and pelvic
+    # studies into what was meant to be a chest cohort. Nothing upstream can catch
+    # that, so it is surfaced here as an explicit unverified-scope warning.
+    unattested = [s.study_uid for s in dataset.studies if not s.body_part]
+    report.checks.append(
+        Check(
+            "body_part_attested",
+            Severity.WARN,
+            not unattested,
+            f"{len(unattested)} of {n_studies} studies carry no BodyPartExamined "
+            f"({_pct(len(unattested), n_studies)}%), so anatomical scope is unverified; "
+            "a chest cohort built from these is taking the sender's word for it",
+            {"examples": unattested[:5]},
         )
     )
 

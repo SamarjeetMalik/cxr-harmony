@@ -1,4 +1,4 @@
-.PHONY: install dev test lint demo clean docs
+.PHONY: install dev test lint demo clean docs figures realdata evaluate
 
 WORK ?= work
 SEED ?= 20260731
@@ -19,6 +19,19 @@ lint:
 docs:
 	cxr-harmony schema --out docs/schema
 	cxr-harmony docs --out docs
+
+figures:
+	python scripts/make_figures.py
+
+# Real public corpora, fetched on demand. Neither is redistributed here:
+# Open-i is CC BY-NC-ND and UNIFESP is CC BY-NC-SA, whose share-alike term
+# would conflict with this project's MIT licence.
+realdata:
+	python scripts/fetch_real_data.py --openi --unifesp
+
+evaluate: realdata
+	python scripts/evaluate_openi.py --corpus realdata/ecgen-radiology --fold heldout
+	python scripts/run_real_dicom.py --src realdata/unifesp/images --work work-real
 
 # End-to-end demonstration: synthesise a three-site delivery, then run the full
 # pipeline over it, cut a release, and verify the result independently.

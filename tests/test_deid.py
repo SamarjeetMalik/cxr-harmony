@@ -463,3 +463,86 @@ def test_verifier_catches_a_reintroduced_private_tag(deidentified, tmp_path):
 
     violations = verify_object(tampered, "private.dcm", [])
     assert any(v.kind == "private_tag_survived" for v in violations)
+
+
+def _greyscale_dataset(interpretation: str, pixels: np.ndarray) -> pydicom.Dataset:
+    """A minimal dataset whose pixel data is actually decodable.
+
+    pydicom needs file_meta with a transfer syntax before pixel_array will work,
+    so a bare Dataset() is not enough to exercise the conversion.
+    """
+    from pydicom.dataset import FileMetaDataset
+    from pydicom.uid import ExplicitVRLittleEndian
+
+    ds = pydicom.Dataset()
+    ds.file_meta = FileMetaDataset()
+    ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+    ds.PhotometricInterpretation = interpretation
+    ds.SamplesPerPixel = 1
+    ds.BitsAllocated = 16
+    ds.BitsStored = 12
+    ds.HighBit = 11
+    ds.PixelRepresentation = 0
+    ds.Rows, ds.Columns = pixels.shape
+    ds.PixelData = np.ascontiguousarray(pixels).tobytes()
+    return ds
+
+
+# --- Photometric interpretation (found via real hospital DICOM) --------------
+
+
+def test_monochrome1_is_converted_to_monochrome2():
+    """A real 400-file CR sample was 372 MONOCHROME1 to 28 MONOCHROME2.
+
+    Left unnormalised, roughly 7% of that cohort reaches the model as a
+    photographic negative of the rest. Nothing errors and nothing looks obviously
+    wrong, which is what makes it dangerous.
+    """
+    from cxr_harmony.deid import normalise_photometric
+
+    ds = _greyscale_dataset("MONOCHROME1", np.array([[0, 100, 2000, 4095]] * 4, dtype=np.uint16))
+
+    assert normalise_photometric(ds) is True
+    assert ds.PhotometricInterpretation == "MONOCHROME2"
+    # Inverted about the stored-value ceiling, not about the observed maximum.
+    assert list(ds.pixel_array[0]) == [4095, 3995, 2095, 0]
+
+
+def test_monochrome2_is_left_alone():
+    from cxr_harmony.deid import normalise_photometric
+
+    ds = _greyscale_dataset("MONOCHROME2", np.array([[0, 4095], [1, 2]], dtype=np.uint16))
+
+    assert normalise_photometric(ds) is False
+    assert ds.PhotometricInterpretation == "MONOCHROME2"
+
+
+def test_inversion_uses_the_declared_range_not_the_observed_maximum():
+    """Otherwise the transform depends on image content, so two studies from the
+    same device are mapped differently."""
+    from cxr_harmony.deid import invert_pixels
+
+    dim = np.array([0, 10, 20], dtype=np.uint16)
+    bright = np.array([0, 10, 4000], dtype=np.uint16)
+    assert list(invert_pixels(dim, 12)) == [4095, 4085, 4075]
+    assert list(invert_pixels(bright, 12)) == [4095, 4085, 95]
+
+
+def test_window_settings_are_dropped_on_conversion():
+    """A centre calibrated for the old polarity would display the result badly."""
+    from cxr_harmony.deid import normalise_photometric
+
+    ds = _greyscale_dataset("MONOCHROME1", np.zeros((2, 2), dtype=np.uint16))
+    ds.WindowCenter = 2048
+    ds.WindowWidth = 4096
+
+    normalise_photometric(ds)
+    assert "WindowCenter" not in ds
+    assert "WindowWidth" not in ds
+
+
+def test_every_released_object_is_monochrome2(deidentified):
+    _, ws, _, result = deidentified
+    for path in ws.deid_store.rglob("*.dcm"):
+        assert pydicom.dcmread(path).PhotometricInterpretation == "MONOCHROME2"
+    assert all(r.photometric_interpretation == "MONOCHROME2" for r in result.records)
