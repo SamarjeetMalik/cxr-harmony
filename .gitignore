@@ -42,5 +42,6 @@ secrets/
 Thumbs.db
 *.swp
 
-*.plan.md
+# Local scratch
 scratchpad/
+*.plan.md
