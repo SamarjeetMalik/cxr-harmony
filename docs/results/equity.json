@@ -1,0 +1,624 @@
+{
+  "cohort": {
+    "n_patients": 600,
+    "n_studies": 997,
+    "source": "synthetic three-site corpus, seed 20260801"
+  },
+  "min_stratum_size": 30,
+  "missing_age": 0,
+  "missing_sex": 0,
+  "n_strata": 30,
+  "n_underrepresented": 10,
+  "parity_gaps": [
+    {
+      "finding": "NO_FINDING",
+      "gap": 0.2792,
+      "highest": {
+        "rate": 0.6429,
+        "stratum": "SITE_C | M | 60-79"
+      },
+      "lowest": {
+        "rate": 0.3636,
+        "stratum": "SITE_B | F | 40-59"
+      }
+    },
+    {
+      "finding": "ATELECTASIS",
+      "gap": 0.1515,
+      "highest": {
+        "rate": 0.1515,
+        "stratum": "SITE_B | M | 60-79"
+      },
+      "lowest": {
+        "rate": 0.0,
+        "stratum": "SITE_A | F | 18-39"
+      }
+    },
+    {
+      "finding": "CONSOLIDATION",
+      "gap": 0.1515,
+      "highest": {
+        "rate": 0.1515,
+        "stratum": "SITE_B | M | 80+"
+      },
+      "lowest": {
+        "rate": 0.0,
+        "stratum": "SITE_A | M | 18-39"
+      }
+    },
+    {
+      "finding": "FRACTURE",
+      "gap": 0.1515,
+      "highest": {
+        "rate": 0.1515,
+        "stratum": "SITE_C | M | 80+"
+      },
+      "lowest": {
+        "rate": 0.0,
+        "stratum": "SITE_C | M | 60-79"
+      }
+    },
+    {
+      "finding": "TUBERCULOSIS",
+      "gap": 0.1515,
+      "highest": {
+        "rate": 0.1515,
+        "stratum": "SITE_B | M | 60-79"
+      },
+      "lowest": {
+        "rate": 0.0,
+        "stratum": "SITE_C | M | 18-39"
+      }
+    },
+    {
+      "finding": "PLEURAL_EFFUSION",
+      "gap": 0.1514,
+      "highest": {
+        "rate": 0.1714,
+        "stratum": "SITE_A | M | 80+"
+      },
+      "lowest": {
+        "rate": 0.02,
+        "stratum": "SITE_C | F | 18-39"
+      }
+    },
+    {
+      "finding": "NODULE",
+      "gap": 0.1364,
+      "highest": {
+        "rate": 0.1364,
+        "stratum": "SITE_B | F | 40-59"
+      },
+      "lowest": {
+        "rate": 0.0,
+        "stratum": "SITE_A | M | 40-59"
+      }
+    },
+    {
+      "finding": "PULMONARY_EDEMA",
+      "gap": 0.1212,
+      "highest": {
+        "rate": 0.1212,
+        "stratum": "SITE_A | F | 60-79"
+      },
+      "lowest": {
+        "rate": 0.0,
+        "stratum": "SITE_C | F | 60-79"
+      }
+    },
+    {
+      "finding": "PNEUMOTHORAX",
+      "gap": 0.1097,
+      "highest": {
+        "rate": 0.14,
+        "stratum": "SITE_C | F | 18-39"
+      },
+      "lowest": {
+        "rate": 0.0303,
+        "stratum": "SITE_B | M | 80+"
+      }
+    },
+    {
+      "finding": "CARDIOMEGALY",
+      "gap": 0.1082,
+      "highest": {
+        "rate": 0.1282,
+        "stratum": "SITE_B | F | 18-39"
+      },
+      "lowest": {
+        "rate": 0.02,
+        "stratum": "SITE_C | F | 18-39"
+      }
+    }
+  ],
+  "strata": [
+    {
+      "findings": {
+        "ATELECTASIS": 4,
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 3,
+        "FRACTURE": 8,
+        "NODULE": 5,
+        "NO_FINDING": 30,
+        "PLEURAL_EFFUSION": 2,
+        "PNEUMOTHORAX": 5,
+        "PULMONARY_EDEMA": 5
+      },
+      "key": "SITE_C | M | 18-39",
+      "n_patients": 31,
+      "n_studies": 55
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 3,
+        "CARDIOMEGALY": 3,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 2,
+        "NODULE": 4,
+        "NO_FINDING": 28,
+        "PLEURAL_EFFUSION": 2,
+        "PNEUMOTHORAX": 5,
+        "PULMONARY_EDEMA": 5,
+        "TUBERCULOSIS": 4
+      },
+      "key": "SITE_C | F | 40-59",
+      "n_patients": 33,
+      "n_studies": 51
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 5,
+        "CARDIOMEGALY": 6,
+        "CONSOLIDATION": 3,
+        "FRACTURE": 5,
+        "NODULE": 2,
+        "NO_FINDING": 23,
+        "PLEURAL_EFFUSION": 5,
+        "PNEUMOTHORAX": 2,
+        "PULMONARY_EDEMA": 2,
+        "TUBERCULOSIS": 3
+      },
+      "key": "SITE_B | M | 18-39",
+      "n_patients": 34,
+      "n_studies": 50
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 1,
+        "CARDIOMEGALY": 1,
+        "CONSOLIDATION": 3,
+        "FRACTURE": 2,
+        "NODULE": 5,
+        "NO_FINDING": 30,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 7,
+        "PULMONARY_EDEMA": 2,
+        "TUBERCULOSIS": 2
+      },
+      "key": "SITE_C | F | 18-39",
+      "n_patients": 29,
+      "n_studies": 50
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 3,
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 5,
+        "FRACTURE": 3,
+        "NODULE": 3,
+        "NO_FINDING": 23,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 3,
+        "PULMONARY_EDEMA": 5,
+        "TUBERCULOSIS": 4
+      },
+      "key": "SITE_A | F | 40-59",
+      "n_patients": 34,
+      "n_studies": 48
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 3,
+        "CARDIOMEGALY": 3,
+        "CONSOLIDATION": 3,
+        "FRACTURE": 5,
+        "NO_FINDING": 29,
+        "PLEURAL_EFFUSION": 2,
+        "PNEUMOTHORAX": 2,
+        "PULMONARY_EDEMA": 5,
+        "TUBERCULOSIS": 1
+      },
+      "key": "SITE_A | M | 40-59",
+      "n_patients": 28,
+      "n_studies": 48
+    },
+    {
+      "findings": {
+        "CARDIOMEGALY": 4,
+        "CONSOLIDATION": 3,
+        "FRACTURE": 4,
+        "NODULE": 2,
+        "NO_FINDING": 26,
+        "PLEURAL_EFFUSION": 4,
+        "PNEUMOTHORAX": 3,
+        "PULMONARY_EDEMA": 2,
+        "TUBERCULOSIS": 1
+      },
+      "key": "SITE_A | F | 18-39",
+      "n_patients": 32,
+      "n_studies": 45
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 5,
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 5,
+        "FRACTURE": 1,
+        "NODULE": 6,
+        "NO_FINDING": 16,
+        "PLEURAL_EFFUSION": 2,
+        "PNEUMOTHORAX": 3,
+        "PULMONARY_EDEMA": 4,
+        "TUBERCULOSIS": 4
+      },
+      "key": "SITE_B | F | 40-59",
+      "n_patients": 29,
+      "n_studies": 44
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 1,
+        "CARDIOMEGALY": 3,
+        "CONSOLIDATION": 2,
+        "NODULE": 2,
+        "NO_FINDING": 27,
+        "PLEURAL_EFFUSION": 5,
+        "PNEUMOTHORAX": 2,
+        "PULMONARY_EDEMA": 3,
+        "TUBERCULOSIS": 1
+      },
+      "key": "SITE_C | M | 60-79",
+      "n_patients": 25,
+      "n_studies": 42
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 2,
+        "CARDIOMEGALY": 2,
+        "FRACTURE": 4,
+        "NODULE": 1,
+        "NO_FINDING": 20,
+        "PLEURAL_EFFUSION": 3,
+        "PNEUMOTHORAX": 4,
+        "PULMONARY_EDEMA": 2,
+        "TUBERCULOSIS": 4
+      },
+      "key": "SITE_A | M | 18-39",
+      "n_patients": 30,
+      "n_studies": 40
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 3,
+        "CARDIOMEGALY": 5,
+        "CONSOLIDATION": 2,
+        "FRACTURE": 5,
+        "NODULE": 3,
+        "NO_FINDING": 17,
+        "PLEURAL_EFFUSION": 3,
+        "PNEUMOTHORAX": 3,
+        "PULMONARY_EDEMA": 3,
+        "TUBERCULOSIS": 2
+      },
+      "key": "SITE_B | F | 18-39",
+      "n_patients": 32,
+      "n_studies": 39
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 2,
+        "CARDIOMEGALY": 4,
+        "CONSOLIDATION": 2,
+        "FRACTURE": 1,
+        "NODULE": 1,
+        "NO_FINDING": 20,
+        "PLEURAL_EFFUSION": 3,
+        "PNEUMOTHORAX": 5,
+        "TUBERCULOSIS": 5
+      },
+      "key": "SITE_C | F | 60-79",
+      "n_patients": 22,
+      "n_studies": 39
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 3,
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 1,
+        "NODULE": 4,
+        "NO_FINDING": 18,
+        "PLEURAL_EFFUSION": 3,
+        "PNEUMOTHORAX": 4,
+        "PULMONARY_EDEMA": 1,
+        "TUBERCULOSIS": 1
+      },
+      "key": "SITE_B | M | 40-59",
+      "n_patients": 24,
+      "n_studies": 37
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 3,
+        "CARDIOMEGALY": 1,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 4,
+        "NODULE": 2,
+        "NO_FINDING": 14,
+        "PLEURAL_EFFUSION": 6,
+        "PNEUMOTHORAX": 3,
+        "PULMONARY_EDEMA": 3,
+        "TUBERCULOSIS": 2
+      },
+      "key": "SITE_A | M | 80+",
+      "n_patients": 19,
+      "n_studies": 35
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 2,
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 3,
+        "FRACTURE": 4,
+        "NODULE": 2,
+        "NO_FINDING": 16,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 2,
+        "PULMONARY_EDEMA": 4,
+        "TUBERCULOSIS": 2
+      },
+      "key": "SITE_A | F | 60-79",
+      "n_patients": 23,
+      "n_studies": 33
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 5,
+        "CARDIOMEGALY": 1,
+        "NO_FINDING": 16,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 4,
+        "PULMONARY_EDEMA": 3,
+        "TUBERCULOSIS": 5
+      },
+      "key": "SITE_B | M | 60-79",
+      "n_patients": 22,
+      "n_studies": 33
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 4,
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 5,
+        "FRACTURE": 2,
+        "NODULE": 1,
+        "NO_FINDING": 16,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 1,
+        "TUBERCULOSIS": 5
+      },
+      "key": "SITE_B | M | 80+",
+      "n_patients": 22,
+      "n_studies": 33
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 2,
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 4,
+        "FRACTURE": 5,
+        "NODULE": 1,
+        "NO_FINDING": 19,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 3,
+        "TUBERCULOSIS": 2
+      },
+      "key": "SITE_C | M | 80+",
+      "n_patients": 20,
+      "n_studies": 33
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 3,
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 4,
+        "FRACTURE": 1,
+        "NODULE": 1,
+        "NO_FINDING": 15,
+        "PLEURAL_EFFUSION": 2,
+        "PNEUMOTHORAX": 4,
+        "PULMONARY_EDEMA": 2,
+        "TUBERCULOSIS": 2
+      },
+      "key": "SITE_B | F | 80+",
+      "n_patients": 21,
+      "n_studies": 31
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 3,
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 4,
+        "FRACTURE": 4,
+        "NODULE": 1,
+        "NO_FINDING": 11,
+        "PLEURAL_EFFUSION": 3,
+        "PNEUMOTHORAX": 4,
+        "TUBERCULOSIS": 1
+      },
+      "key": "SITE_C | M | 40-59",
+      "n_patients": 23,
+      "n_studies": 30
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 1,
+        "CARDIOMEGALY": 1,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 2,
+        "NODULE": 2,
+        "NO_FINDING": 13,
+        "PNEUMOTHORAX": 2,
+        "PULMONARY_EDEMA": 5,
+        "TUBERCULOSIS": 2
+      },
+      "key": "SITE_A | M | 60-79",
+      "n_patients": 17,
+      "n_studies": 28
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 3,
+        "CONSOLIDATION": 2,
+        "FRACTURE": 1,
+        "NODULE": 2,
+        "NO_FINDING": 13,
+        "PLEURAL_EFFUSION": 3,
+        "PNEUMOTHORAX": 1,
+        "PULMONARY_EDEMA": 1,
+        "TUBERCULOSIS": 1
+      },
+      "key": "SITE_B | F | 60-79",
+      "n_patients": 16,
+      "n_studies": 24
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 1,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 1,
+        "NODULE": 1,
+        "NO_FINDING": 13,
+        "PLEURAL_EFFUSION": 3,
+        "PNEUMOTHORAX": 1,
+        "PULMONARY_EDEMA": 1,
+        "TUBERCULOSIS": 2
+      },
+      "key": "SITE_B | M | 0-17",
+      "n_patients": 17,
+      "n_studies": 21
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 4,
+        "CARDIOMEGALY": 1,
+        "NODULE": 1,
+        "NO_FINDING": 12,
+        "PLEURAL_EFFUSION": 5,
+        "PNEUMOTHORAX": 1
+      },
+      "key": "SITE_A | M | 0-17",
+      "n_patients": 15,
+      "n_studies": 20
+    },
+    {
+      "findings": {
+        "CONSOLIDATION": 1,
+        "NODULE": 2,
+        "NO_FINDING": 14,
+        "PNEUMOTHORAX": 1,
+        "PULMONARY_EDEMA": 1,
+        "TUBERCULOSIS": 2
+      },
+      "key": "SITE_C | M | 0-17",
+      "n_patients": 13,
+      "n_studies": 20
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 2,
+        "CARDIOMEGALY": 1,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 1,
+        "NODULE": 1,
+        "NO_FINDING": 9,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 3
+      },
+      "key": "SITE_A | F | 80+",
+      "n_patients": 13,
+      "n_studies": 17
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 1,
+        "CARDIOMEGALY": 1,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 2,
+        "NO_FINDING": 9,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 2,
+        "PULMONARY_EDEMA": 2
+      },
+      "key": "SITE_C | F | 0-17",
+      "n_patients": 9,
+      "n_studies": 16
+    },
+    {
+      "findings": {
+        "ATELECTASIS": 4,
+        "CARDIOMEGALY": 1,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 1,
+        "NO_FINDING": 7,
+        "PNEUMOTHORAX": 1,
+        "PULMONARY_EDEMA": 3,
+        "TUBERCULOSIS": 1
+      },
+      "key": "SITE_C | F | 80+",
+      "n_patients": 13,
+      "n_studies": 15
+    },
+    {
+      "findings": {
+        "CARDIOMEGALY": 1,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 1,
+        "NODULE": 1,
+        "NO_FINDING": 5,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 2,
+        "PULMONARY_EDEMA": 2
+      },
+      "key": "SITE_B | F | 0-17",
+      "n_patients": 8,
+      "n_studies": 13
+    },
+    {
+      "findings": {
+        "CARDIOMEGALY": 2,
+        "CONSOLIDATION": 1,
+        "FRACTURE": 1,
+        "NO_FINDING": 2,
+        "PLEURAL_EFFUSION": 1,
+        "PNEUMOTHORAX": 1,
+        "PULMONARY_EDEMA": 1
+      },
+      "key": "SITE_A | F | 0-17",
+      "n_patients": 6,
+      "n_studies": 7
+    }
+  ],
+  "underrepresented": [
+    "SITE_A | M | 60-79",
+    "SITE_B | F | 60-79",
+    "SITE_B | M | 0-17",
+    "SITE_A | M | 0-17",
+    "SITE_C | M | 0-17",
+    "SITE_A | F | 80+",
+    "SITE_C | F | 0-17",
+    "SITE_C | F | 80+",
+    "SITE_B | F | 0-17",
+    "SITE_A | F | 0-17"
+  ]
+}

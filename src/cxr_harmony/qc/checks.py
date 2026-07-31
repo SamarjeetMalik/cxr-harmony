@@ -26,6 +26,7 @@ from enum import Enum
 
 from ..schema.models import CanonicalDataset
 from ..schema.vocab import Laterality, Sex, ViewPosition
+from .equity import MIN_STRATUM_SIZE, audit
 
 
 class Severity(str, Enum):
@@ -91,6 +92,7 @@ def run_checks(
     unmapped: list[dict] | None = None,
     quarantined: list[dict] | None = None,
     view_imbalance_threshold: float = 0.35,
+    parity_gap_threshold: float = 0.25,
 ) -> QCReport:
     """Run every check and return the report."""
     report = QCReport()
@@ -314,6 +316,70 @@ def run_checks(
         )
     )
 
+    # --- Equity ------------------------------------------------------------
+    # Properties of the cohort, not of a model. See cxr_harmony.qc.equity for why
+    # that distinction is kept sharp rather than borrowing the model-level names.
+    equity = audit(dataset)
+
+    # A cohort smaller than (strata x minimum) cannot fill its strata however
+    # evenly it is drawn, so under-representation there is a statement about size,
+    # not about balance. Warning at that scale is crying wolf, and a QC report that
+    # always warns is one nobody reads. Above that scale, balance is a real choice
+    # and imbalance is a real finding.
+    balance_is_achievable = n_studies >= equity.n_strata * MIN_STRATUM_SIZE
+    report.checks.append(
+        Check(
+            "strata_adequately_represented",
+            Severity.WARN if balance_is_achievable else Severity.INFO,
+            not equity.underrepresented,
+            (
+                f"{len(equity.underrepresented)} of {equity.n_strata} strata hold fewer "
+                f"than {MIN_STRATUM_SIZE} studies; rates for those strata are not "
+                "estimable and a model would be least reliable exactly where it is "
+                "least tested"
+                if balance_is_achievable
+                else f"{len(equity.underrepresented)} of {equity.n_strata} strata are "
+                f"below {MIN_STRATUM_SIZE} studies, but {n_studies} studies cannot fill "
+                f"{equity.n_strata} strata at any balance; this reflects cohort size "
+                "rather than skew and is recorded for scale planning"
+            ),
+            {
+                "underrepresented": equity.underrepresented[:10],
+                "balance_achievable_at_this_size": balance_is_achievable,
+                "studies_needed_for_full_strata": equity.n_strata * MIN_STRATUM_SIZE,
+            },
+        )
+    )
+
+    worst = equity.worst_gap
+    report.checks.append(
+        Check(
+            "finding_prevalence_parity",
+            Severity.WARN,
+            worst is None or worst.gap <= parity_gap_threshold,
+            (
+                f"largest prevalence gap is {worst.gap:.1%} for {worst.finding} "
+                f"({worst.highest_stratum} {worst.highest_rate:.1%} vs "
+                f"{worst.lowest_stratum} {worst.lowest_rate:.1%}); a gap this wide means "
+                "the finding and the stratum are confounded in training data"
+                if worst is not None
+                else "too few adequately sized strata to compare prevalence"
+            ),
+            {"gaps": [g.to_dict() for g in equity.parity_gaps[:8]]},
+        )
+    )
+
+    report.checks.append(
+        Check(
+            "demographics_recorded",
+            Severity.WARN,
+            equity.missing_sex == 0 and equity.missing_age == 0,
+            f"{equity.missing_sex} studies lack sex and {equity.missing_age} lack age, "
+            "so those studies cannot enter any stratified analysis",
+            {"missing_sex": equity.missing_sex, "missing_age": equity.missing_age},
+        )
+    )
+
     cross_site = _cross_site_patients(dataset)
     report.checks.append(
         Check(
@@ -364,6 +430,7 @@ def run_checks(
             sorted(Counter(s.laterality.value for s in dataset.series).items())
         ),
         "n_cross_site_patients": len(cross_site),
+        "equity": equity.to_dict(),
         "label_prevalence_pct": prevalence,
     }
     return report

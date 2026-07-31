@@ -1,0 +1,32 @@
+{
+  "bits_stored": {
+    "10": 22,
+    "15": 372,
+    "8": 6
+  },
+  "body_part_empty": 400,
+  "corpus": "UNIFESP X-ray collection (CC BY-NC-SA 4.0), sampled",
+  "modality": {
+    "CR": 400
+  },
+  "n_accepted": 400,
+  "n_objects": 400,
+  "n_photometric_converted": 372,
+  "n_quarantined": 0,
+  "n_redacted": 71,
+  "photometric_after": {
+    "MONOCHROME2": 400
+  },
+  "photometric_before": {
+    "MONOCHROME1": 372,
+    "MONOCHROME2": 28
+  },
+  "redacted_area_pct": {
+    "max": 2.747,
+    "median": 0.143,
+    "min": 0.049,
+    "n": 71
+  },
+  "verification_passed": true,
+  "view_position_empty": 400
+}

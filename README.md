@@ -29,7 +29,14 @@ independent verification pass. About 40 seconds.
 
 ---
 
-## Results at a glance
+## Results
+
+**➜ [Full results, with plots: `docs/RESULTS.md`](docs/RESULTS.md)**
+
+Measured against the numeric performance targets set in the project proposal this
+pipeline serves:
+
+![Targets versus achieved](docs/figures/results_targets.png)
 
 | | |
 |---|---|
@@ -37,9 +44,12 @@ independent verification pass. About 40 seconds.
 | Burned-in text pixels surviving redaction | **0** |
 | Cross-site patients correctly collapsed to one identity | **8 of 8** |
 | Label extraction on **real** radiologist prose (held-out, n=1,965) | **micro F1 0.901** |
+| Same extractor before real data corrected it | micro F1 0.822 |
 | Burned-in text found in **real** hospital images | **71 of 400**, zero-shot across language |
 | Real archive mixing greyscale conventions, silently | **372 MONOCHROME1 : 28 MONOCHROME2** |
-| Tests | **263** |
+| Cohen's κ vs radiologist annotation (held-out) | **0.897** — target >0.80 |
+| Throughput, real archive, end to end | **103,013 studies/hour** — target >500 |
+| Tests | **313** |
 
 ---
 
@@ -182,7 +192,7 @@ across sites rather than only within one.
 
 ## Verification
 
-Correctness claims here are tested, not asserted. 263 tests, and the ones that
+Correctness claims here are tested, not asserted. 313 tests, and the ones that
 matter most break something first — a QC check that has never been observed to
 fail is not evidence of anything.
 

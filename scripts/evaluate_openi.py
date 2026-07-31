@@ -23,7 +23,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cxr_harmony.adapters.openi import load_corpus  # noqa: E402
-from cxr_harmony.reports.labels import positive_findings  # noqa: E402
+from cxr_harmony.qc.agreement import agreement_by_label, pooled_kappa  # noqa: E402
+from cxr_harmony.reports.labels import legacy_patterns, positive_findings  # noqa: E402
 from cxr_harmony.reports.parser import clinical_text, parse_sections  # noqa: E402
 from cxr_harmony.schema.vocab import Finding  # noqa: E402
 
@@ -85,14 +86,30 @@ def split_corpus(reports: list, fold: str) -> list:
     return out
 
 
-def evaluate(corpus_dir: Path, limit: int | None = None, fold: str = "all") -> dict:
+def evaluate(
+    corpus_dir: Path,
+    limit: int | None = None,
+    fold: str = "all",
+    baseline: bool = False,
+) -> dict:
+    """Score the extractor. With ``baseline``, scores the pre-evaluation pattern set."""
     reports = split_corpus(load_corpus(corpus_dir, limit=limit), fold)
+
+    if baseline:
+        with legacy_patterns():
+            return _score(reports, baseline=True)
+    return _score(reports, baseline=False)
+
+
+def _score(reports: list, *, baseline: bool) -> dict:
 
     per_finding: dict[Finding, Score] = {f: Score() for f in SCORED}
     normal_tp = normal_fp = normal_fn = 0
     exact = 0
     examples_missed: dict[str, list[str]] = {}
     examples_spurious: dict[str, list[str]] = {}
+    predicted_sets: list[set[str]] = []
+    reference_sets: list[set[str]] = []
 
     for report in reports:
         # Route through the same parser the pipeline uses, so the section
@@ -103,6 +120,8 @@ def evaluate(corpus_dir: Path, limit: int | None = None, fold: str = "all") -> d
         truth = set(report.findings)
         truth_pos = {f for f in truth if f in per_finding}
         pred_pos = {f for f in predicted if f in per_finding}
+        predicted_sets.append({f.value for f in pred_pos})
+        reference_sets.append({f.value for f in truth_pos})
 
         for finding in SCORED:
             score = per_finding[finding]
@@ -151,7 +170,12 @@ def evaluate(corpus_dir: Path, limit: int | None = None, fold: str = "all") -> d
 
     normal = Score(tp=normal_tp, fp=normal_fp, fn=normal_fn)
 
+    scored_names = [f.value for f in SCORED]
+    agreements = agreement_by_label(predicted_sets, reference_sets, scored_names)
+    pooled = pooled_kappa(agreements)
+
     return {
+        "baseline": baseline,
         "n_reports": len(reports),
         "micro": {
             "precision": round(micro.precision, 4),
@@ -180,6 +204,10 @@ def evaluate(corpus_dir: Path, limit: int | None = None, fold: str = "all") -> d
                 "fn": score.fn,
             }
             for finding, score in per_finding.items()
+        },
+        "kappa": {
+            "pooled": pooled.to_dict(),
+            "per_finding": {k: v.to_dict() for k, v in sorted(agreements.items())},
         },
         "examples_missed": examples_missed,
         "examples_spurious": examples_spurious,
@@ -212,6 +240,22 @@ def render(result: dict) -> str:
         f"normal detection F1 : {result['normal_detection']['f1']:.3f} "
         f"(support {result['normal_detection']['support']})",
     ]
+
+    pooled = result["kappa"]["pooled"]
+    lines += [
+        "",
+        f"Cohen's kappa (pooled): {pooled['kappa']:.3f}  ({pooled['interpretation']})"
+        "   target > 0.80",
+        "",
+        f"{'finding':<20} {'kappa':>7} {'support':>8}  interpretation",
+        "-" * 58,
+    ]
+    for name, k in sorted(
+        result["kappa"]["per_finding"].items(), key=lambda kv: -kv[1]["support"]
+    ):
+        lines.append(
+            f"{name:<20} {k['kappa']:>7.3f} {k['support']:>8}  {k['interpretation']}"
+        )
     return "\n".join(lines)
 
 
@@ -222,10 +266,15 @@ def main() -> None:
     parser.add_argument("--json-out", type=Path, default=None)
     parser.add_argument("--show-misses", action="store_true")
     parser.add_argument("--fold", choices=["all", "dev", "heldout"], default="all")
+    parser.add_argument(
+        "--baseline",
+        action="store_true",
+        help="score the pre-evaluation pattern set, to regenerate the before/after comparison",
+    )
     args = parser.parse_args()
 
-    result = evaluate(args.corpus, args.limit, args.fold)
-    print(f"fold: {args.fold}")
+    result = evaluate(args.corpus, args.limit, args.fold, args.baseline)
+    print(f"fold: {args.fold}{'  [BASELINE pattern set]' if args.baseline else ''}")
     print(render(result))
 
     if args.show_misses:
@@ -241,9 +290,19 @@ def main() -> None:
                 print(f"  {text}")
 
     if args.json_out:
+        # Example sentences are printed to stdout for debugging but never written
+        # to a file that might be committed: they are verbatim text from a corpus
+        # licensed CC BY-NC-ND, which forbids derivatives. Excluding them here
+        # rather than stripping afterwards means a future run cannot reintroduce
+        # them by being invoked slightly differently.
+        publishable = {
+            k: v
+            for k, v in result.items()
+            if k not in ("examples_missed", "examples_spurious")
+        }
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(
-            json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            json.dumps(publishable, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         print(f"\nwrote {args.json_out}")
 

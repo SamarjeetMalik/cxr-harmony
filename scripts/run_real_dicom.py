@@ -18,6 +18,7 @@ removal efficacy comes from the synthetic corpus, where ground truth exists.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections import Counter
 from pathlib import Path
@@ -59,10 +60,39 @@ def survey(directory: Path) -> dict:
     return {"n": n, "fields": counters, "sizes": sizes}
 
 
+def _redaction_area_stats(result) -> dict:
+    """Fraction of each image blacked out, for the objects that were redacted.
+
+    Reported so that "the detector fired on 71 images" can be read alongside how
+    much it removed: small stripes are consistent with annotation, large areas
+    would mean anatomy was being eaten.
+    """
+    areas = sorted(
+        100.0
+        * sum(r["width"] * r["height"] for r in record.redacted_regions)
+        / (record.rows * record.columns)
+        for record in result.records
+        if record.pixel_redacted
+    )
+    if not areas:
+        return {}
+    return {
+        "n": len(areas),
+        "min": round(areas[0], 3),
+        "median": round(areas[len(areas) // 2], 3),
+        "max": round(areas[-1], 3),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--src", type=Path, required=True)
     parser.add_argument("--work", type=Path, default=Path("work-real"))
+    parser.add_argument(
+        "--json-out",
+        type=Path,
+        default=Path(__file__).resolve().parents[1] / "docs" / "results" / "real_dicom.json",
+    )
     args = parser.parse_args()
 
     print("=" * 72)
@@ -112,6 +142,39 @@ def main() -> None:
 
     report = verify_store(ws.deid_store)
     print(f"verify    checked={report.n_checked} passed={report.passed} {report.by_kind()}")
+
+    if args.json_out:
+        # Counts only. No pixel data and no header values leave this function:
+        # the archive is licensed against redistribution.
+        args.json_out.parent.mkdir(parents=True, exist_ok=True)
+        args.json_out.write_text(
+            json.dumps(
+                {
+                    "corpus": "UNIFESP X-ray collection (CC BY-NC-SA 4.0), sampled",
+                    "n_objects": found["n"],
+                    "photometric_before": dict(
+                        found["fields"]["PhotometricInterpretation"].most_common()
+                    ),
+                    "photometric_after": dict(after),
+                    "bits_stored": dict(found["fields"]["BitsStored"].most_common()),
+                    "modality": dict(found["fields"]["Modality"].most_common()),
+                    "body_part_empty": found["fields"]["BodyPartExamined"].get("<empty>", 0),
+                    "view_position_empty": found["fields"]["ViewPosition"].get("<empty>", 0),
+                    "n_accepted": ingested.n_accepted,
+                    "n_quarantined": ingested.n_quarantined,
+                    "n_redacted": result.n_redacted,
+                    "n_photometric_converted": result.n_photometric_converted,
+                    "redacted_area_pct": _redaction_area_stats(result),
+                    "verification_passed": report.passed,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + chr(10),
+            encoding="utf-8",
+        )
+        print()
+        print(f"wrote {args.json_out}")
 
     print()
     print("Note: this archive was de-identified by its publisher before release, so")

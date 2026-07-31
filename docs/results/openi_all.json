@@ -1,5 +1,170 @@
 {
+  "baseline": false,
   "exact_match_rate": 0.934,
+  "kappa": {
+    "per_finding": {
+      "ATELECTASIS": {
+        "expected_agreement": 0.8215,
+        "interpretation": "almost perfect",
+        "kappa": 0.9715,
+        "label": "ATELECTASIS",
+        "observed_agreement": 0.9949,
+        "prevalence": 0.0998,
+        "reliable": true,
+        "support": 392,
+        "table": {
+          "both_negative": 3528,
+          "both_positive": 379,
+          "only_first": 7,
+          "only_second": 13
+        }
+      },
+      "CARDIOMEGALY": {
+        "expected_agreement": 0.8258,
+        "interpretation": "almost perfect",
+        "kappa": 0.8611,
+        "label": "CARDIOMEGALY",
+        "observed_agreement": 0.9758,
+        "prevalence": 0.0965,
+        "reliable": true,
+        "support": 379,
+        "table": {
+          "both_negative": 3501,
+          "both_positive": 331,
+          "only_first": 47,
+          "only_second": 48
+        }
+      },
+      "CONSOLIDATION": {
+        "expected_agreement": 0.9477,
+        "interpretation": "almost perfect",
+        "kappa": 0.8977,
+        "label": "CONSOLIDATION",
+        "observed_agreement": 0.9947,
+        "prevalence": 0.0252,
+        "reliable": true,
+        "support": 99,
+        "table": {
+          "both_negative": 3811,
+          "both_positive": 95,
+          "only_first": 17,
+          "only_second": 4
+        }
+      },
+      "FRACTURE": {
+        "expected_agreement": 0.9472,
+        "interpretation": "almost perfect",
+        "kappa": 0.8987,
+        "label": "FRACTURE",
+        "observed_agreement": 0.9947,
+        "prevalence": 0.0252,
+        "reliable": true,
+        "support": 99,
+        "table": {
+          "both_negative": 3810,
+          "both_positive": 96,
+          "only_first": 18,
+          "only_second": 3
+        }
+      },
+      "NODULE": {
+        "expected_agreement": 0.9369,
+        "interpretation": "almost perfect",
+        "kappa": 0.8223,
+        "label": "NODULE",
+        "observed_agreement": 0.9888,
+        "prevalence": 0.0321,
+        "reliable": true,
+        "support": 126,
+        "table": {
+          "both_negative": 3777,
+          "both_positive": 106,
+          "only_first": 24,
+          "only_second": 20
+        }
+      },
+      "PLEURAL_EFFUSION": {
+        "expected_agreement": 0.9104,
+        "interpretation": "almost perfect",
+        "kappa": 0.9118,
+        "label": "PLEURAL_EFFUSION",
+        "observed_agreement": 0.9921,
+        "prevalence": 0.0474,
+        "reliable": true,
+        "support": 186,
+        "table": {
+          "both_negative": 3727,
+          "both_positive": 169,
+          "only_first": 14,
+          "only_second": 17
+        }
+      },
+      "PNEUMOTHORAX": {
+        "expected_agreement": 0.9876,
+        "interpretation": "insufficient support",
+        "kappa": 0.8152,
+        "label": "PNEUMOTHORAX",
+        "observed_agreement": 0.9977,
+        "prevalence": 0.0059,
+        "reliable": false,
+        "support": 23,
+        "table": {
+          "both_negative": 3898,
+          "both_positive": 20,
+          "only_first": 6,
+          "only_second": 3
+        }
+      },
+      "PULMONARY_EDEMA": {
+        "expected_agreement": 0.9429,
+        "interpretation": "almost perfect",
+        "kappa": 0.835,
+        "label": "PULMONARY_EDEMA",
+        "observed_agreement": 0.9906,
+        "prevalence": 0.0285,
+        "reliable": true,
+        "support": 112,
+        "table": {
+          "both_negative": 3793,
+          "both_positive": 97,
+          "only_first": 22,
+          "only_second": 15
+        }
+      },
+      "TUBERCULOSIS": {
+        "expected_agreement": 0.9962,
+        "interpretation": "insufficient support",
+        "kappa": 0.7996,
+        "label": "TUBERCULOSIS",
+        "observed_agreement": 0.9992,
+        "prevalence": 0.0018,
+        "reliable": false,
+        "support": 7,
+        "table": {
+          "both_negative": 3918,
+          "both_positive": 6,
+          "only_first": 2,
+          "only_second": 1
+        }
+      }
+    },
+    "pooled": {
+      "expected_agreement": 0.9219,
+      "interpretation": "almost perfect",
+      "kappa": 0.8983,
+      "label": "pooled",
+      "observed_agreement": 0.992,
+      "prevalence": 0.0403,
+      "reliable": true,
+      "support": 1423,
+      "table": {
+        "both_negative": 33763,
+        "both_positive": 1299,
+        "only_first": 157,
+        "only_second": 124
+      }
+    }
+  },
   "macro_f1": 0.8723,
   "micro": {
     "f1": 0.9024,

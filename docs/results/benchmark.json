@@ -1,0 +1,69 @@
+{
+  "hardware": {
+    "cpu_count": 16,
+    "note": "single-process, single-threaded; no parallelism is used",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
+    "python": "3.11.9"
+  },
+  "runs": [
+    {
+      "corpus": "synthetic",
+      "image_size": "512x512",
+      "n_studies": 64,
+      "stages": [
+        {
+          "meets_target": true,
+          "n_studies": 64,
+          "seconds": 0.864,
+          "stage": "ingest",
+          "studies_per_hour": 266812.5
+        },
+        {
+          "meets_target": true,
+          "n_studies": 64,
+          "seconds": 1.735,
+          "stage": "deidentify",
+          "studies_per_hour": 132800.9
+        },
+        {
+          "meets_target": true,
+          "n_studies": 64,
+          "seconds": 2.598,
+          "stage": "ingest+deidentify",
+          "studies_per_hour": 88668.0
+        }
+      ]
+    },
+    {
+      "corpus": "real (UNIFESP hospital archive)",
+      "mean_file_bytes": 131143,
+      "n_studies": 400,
+      "stages": [
+        {
+          "meets_target": true,
+          "n_studies": 400,
+          "seconds": 5.611,
+          "stage": "ingest",
+          "studies_per_hour": 256626.8
+        },
+        {
+          "meets_target": true,
+          "n_studies": 400,
+          "seconds": 8.368,
+          "stage": "deidentify",
+          "studies_per_hour": 172094.2
+        },
+        {
+          "meets_target": true,
+          "n_studies": 400,
+          "seconds": 13.979,
+          "stage": "ingest+deidentify",
+          "studies_per_hour": 103013.3
+        }
+      ]
+    }
+  ],
+  "scope_caveat": "Measures local processing only: files already on disk, single process, no parallelism. It excludes network transfer from the partner site, DICOM C-STORE negotiation, and any queueing at the receiving end, which is where a real deployment's throughput ceiling almost certainly sits. The comfortable margin over target should be read as 'processing is not the bottleneck', not as 'ingestion runs 200x faster than required'.",
+  "target_studies_per_hour": 500
+}

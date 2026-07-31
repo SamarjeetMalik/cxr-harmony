@@ -1,0 +1,267 @@
+{
+  "baseline": false,
+  "exact_match_rate": 0.9317,
+  "kappa": {
+    "per_finding": {
+      "ATELECTASIS": {
+        "expected_agreement": 0.8325,
+        "interpretation": "almost perfect",
+        "kappa": 0.9757,
+        "label": "ATELECTASIS",
+        "observed_agreement": 0.9959,
+        "prevalence": 0.0928,
+        "reliable": true,
+        "support": 182,
+        "table": {
+          "both_negative": 1777,
+          "both_positive": 177,
+          "only_first": 3,
+          "only_second": 5
+        }
+      },
+      "CARDIOMEGALY": {
+        "expected_agreement": 0.8185,
+        "interpretation": "almost perfect",
+        "kappa": 0.8764,
+        "label": "CARDIOMEGALY",
+        "observed_agreement": 0.9776,
+        "prevalence": 0.1009,
+        "reliable": true,
+        "support": 198,
+        "table": {
+          "both_negative": 1742,
+          "both_positive": 176,
+          "only_first": 22,
+          "only_second": 22
+        }
+      },
+      "CONSOLIDATION": {
+        "expected_agreement": 0.9469,
+        "interpretation": "almost perfect",
+        "kappa": 0.9328,
+        "label": "CONSOLIDATION",
+        "observed_agreement": 0.9964,
+        "prevalence": 0.0255,
+        "reliable": true,
+        "support": 50,
+        "table": {
+          "both_negative": 1905,
+          "both_positive": 50,
+          "only_first": 7,
+          "only_second": 0
+        }
+      },
+      "FRACTURE": {
+        "expected_agreement": 0.9331,
+        "interpretation": "almost perfect",
+        "kappa": 0.8934,
+        "label": "FRACTURE",
+        "observed_agreement": 0.9929,
+        "prevalence": 0.0316,
+        "reliable": true,
+        "support": 62,
+        "table": {
+          "both_negative": 1887,
+          "both_positive": 61,
+          "only_first": 13,
+          "only_second": 1
+        }
+      },
+      "NODULE": {
+        "expected_agreement": 0.9298,
+        "interpretation": "substantial",
+        "kappa": 0.804,
+        "label": "NODULE",
+        "observed_agreement": 0.9862,
+        "prevalence": 0.0367,
+        "reliable": true,
+        "support": 72,
+        "table": {
+          "both_negative": 1877,
+          "both_positive": 58,
+          "only_first": 13,
+          "only_second": 14
+        }
+      },
+      "PLEURAL_EFFUSION": {
+        "expected_agreement": 0.9106,
+        "interpretation": "almost perfect",
+        "kappa": 0.8974,
+        "label": "PLEURAL_EFFUSION",
+        "observed_agreement": 0.9908,
+        "prevalence": 0.0479,
+        "reliable": true,
+        "support": 94,
+        "table": {
+          "both_negative": 1861,
+          "both_positive": 83,
+          "only_first": 7,
+          "only_second": 11
+        }
+      },
+      "PNEUMOTHORAX": {
+        "expected_agreement": 0.9894,
+        "interpretation": "insufficient support",
+        "kappa": 0.7606,
+        "label": "PNEUMOTHORAX",
+        "observed_agreement": 0.9975,
+        "prevalence": 0.0051,
+        "reliable": false,
+        "support": 10,
+        "table": {
+          "both_negative": 1949,
+          "both_positive": 8,
+          "only_first": 3,
+          "only_second": 2
+        }
+      },
+      "PULMONARY_EDEMA": {
+        "expected_agreement": 0.9441,
+        "interpretation": "almost perfect",
+        "kappa": 0.8451,
+        "label": "PULMONARY_EDEMA",
+        "observed_agreement": 0.9913,
+        "prevalence": 0.028,
+        "reliable": true,
+        "support": 55,
+        "table": {
+          "both_negative": 1897,
+          "both_positive": 48,
+          "only_first": 10,
+          "only_second": 7
+        }
+      },
+      "TUBERCULOSIS": {
+        "expected_agreement": 0.9959,
+        "interpretation": "insufficient support",
+        "kappa": 0.7495,
+        "label": "TUBERCULOSIS",
+        "observed_agreement": 0.999,
+        "prevalence": 0.002,
+        "reliable": false,
+        "support": 4,
+        "table": {
+          "both_negative": 1957,
+          "both_positive": 3,
+          "only_first": 1,
+          "only_second": 1
+        }
+      }
+    },
+    "pooled": {
+      "expected_agreement": 0.9202,
+      "interpretation": "almost perfect",
+      "kappa": 0.8992,
+      "label": "pooled",
+      "observed_agreement": 0.992,
+      "prevalence": 0.0412,
+      "reliable": true,
+      "support": 727,
+      "table": {
+        "both_negative": 16852,
+        "both_positive": 664,
+        "only_first": 79,
+        "only_second": 63
+      }
+    }
+  },
+  "macro_f1": 0.8637,
+  "micro": {
+    "f1": 0.9034,
+    "fn": 63,
+    "fp": 79,
+    "precision": 0.8937,
+    "recall": 0.9133,
+    "tp": 664
+  },
+  "n_reports": 1962,
+  "normal_detection": {
+    "f1": 0.6808,
+    "precision": 0.5428,
+    "recall": 0.9129,
+    "support": 723
+  },
+  "per_finding": {
+    "ATELECTASIS": {
+      "f1": 0.9779,
+      "fn": 5,
+      "fp": 3,
+      "precision": 0.9833,
+      "recall": 0.9725,
+      "support": 182,
+      "tp": 177
+    },
+    "CARDIOMEGALY": {
+      "f1": 0.8889,
+      "fn": 22,
+      "fp": 22,
+      "precision": 0.8889,
+      "recall": 0.8889,
+      "support": 198,
+      "tp": 176
+    },
+    "CONSOLIDATION": {
+      "f1": 0.9346,
+      "fn": 0,
+      "fp": 7,
+      "precision": 0.8772,
+      "recall": 1.0,
+      "support": 50,
+      "tp": 50
+    },
+    "FRACTURE": {
+      "f1": 0.8971,
+      "fn": 1,
+      "fp": 13,
+      "precision": 0.8243,
+      "recall": 0.9839,
+      "support": 62,
+      "tp": 61
+    },
+    "NODULE": {
+      "f1": 0.8112,
+      "fn": 14,
+      "fp": 13,
+      "precision": 0.8169,
+      "recall": 0.8056,
+      "support": 72,
+      "tp": 58
+    },
+    "PLEURAL_EFFUSION": {
+      "f1": 0.9022,
+      "fn": 11,
+      "fp": 7,
+      "precision": 0.9222,
+      "recall": 0.883,
+      "support": 94,
+      "tp": 83
+    },
+    "PNEUMOTHORAX": {
+      "f1": 0.7619,
+      "fn": 2,
+      "fp": 3,
+      "precision": 0.7273,
+      "recall": 0.8,
+      "support": 10,
+      "tp": 8
+    },
+    "PULMONARY_EDEMA": {
+      "f1": 0.8496,
+      "fn": 7,
+      "fp": 10,
+      "precision": 0.8276,
+      "recall": 0.8727,
+      "support": 55,
+      "tp": 48
+    },
+    "TUBERCULOSIS": {
+      "f1": 0.75,
+      "fn": 1,
+      "fp": 1,
+      "precision": 0.75,
+      "recall": 0.75,
+      "support": 4,
+      "tp": 3
+    }
+  }
+}

@@ -37,6 +37,8 @@ silently.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from ..schema.vocab import Finding
@@ -201,6 +203,92 @@ _COMPILED: dict[Finding, tuple[re.Pattern[str], ...]] = {
 _COMPILED_NORMAL = tuple(re.compile(p, re.I) for p in NORMAL_PATTERNS)
 
 
+#: The pattern set as it stood *before* evaluation against real radiologist prose.
+#:
+#: Kept solely so the published before/after comparison can be regenerated rather
+#: than transcribed from notes — a number nobody can reproduce is a number nobody
+#: should believe. Not used by the pipeline. See ``scripts/evaluate_openi.py
+#: --baseline`` and ``docs/RESULTS.md``.
+#:
+#: Its four defects, all found by real data: no ``clear of`` negation cue, no
+#: resolution cues, cardiomegaly and oedema phrased as the label rather than as
+#: radiologists write them, and opacity descriptors conflated with the
+#: consolidation diagnosis.
+LEGACY_FINDING_PATTERNS: dict[Finding, tuple[str, ...]] = {
+    Finding.CARDIOMEGALY: (
+        r"cardiomegaly",
+        r"cardiac\s+silhouette\s+is\s+enlarged",
+        r"enlarge\w*\s+of\s+the\s+cardiac\s+(?:shadow|silhouette)",
+        r"cardiothoracic\s+ratio\s+(?:exceed|>|greater)",
+        r"enlarged\s+cardiac\s+(?:shadow|silhouette)",
+    ),
+    Finding.PLEURAL_EFFUSION: FINDING_PATTERNS[Finding.PLEURAL_EFFUSION],
+    Finding.CONSOLIDATION: (
+        r"consolidation",
+        r"air[-\s]space\s+opacity",
+        r"air\s+bronchograms?",
+        r"homogeneous\s+opacity",
+    ),
+    Finding.PNEUMOTHORAX: FINDING_PATTERNS[Finding.PNEUMOTHORAX],
+    Finding.PULMONARY_EDEMA: (
+        r"pulmonary\s+(?:o?edema)",
+        r"perihilar\s+haziness",
+        r"upper\s+lobe\s+diversion",
+        r"septal\s+thickening",
+        r"fluid\s+overload",
+        r"venous\s+congestion",
+    ),
+    Finding.ATELECTASIS: FINDING_PATTERNS[Finding.ATELECTASIS],
+    Finding.NODULE: FINDING_PATTERNS[Finding.NODULE],
+    Finding.FRACTURE: FINDING_PATTERNS[Finding.FRACTURE],
+    Finding.TUBERCULOSIS: FINDING_PATTERNS[Finding.TUBERCULOSIS],
+}
+
+LEGACY_NORMAL_PATTERNS: tuple[str, ...] = (
+    r"no\s+significant\s+abnormality",
+    r"lung\s+fields?\s+(?:are|is)\s+clear",
+    r"within\s+normal\s+limits",
+    r"unremarkable\s+(?:study|examination|radiograph)",
+    r"no\s+abnormality\s+detected",
+)
+
+LEGACY_NEGATION_CUES: tuple[str, ...] = (
+    r"\bno\b",
+    r"\bnot\b",
+    r"\bwithout\b",
+    r"\bnegative\s+for\b",
+    r"\bfree\s+of\b",
+    r"\babsence\s+of\b",
+    r"\bruled?\s+out\b",
+    r"\bnor\b",
+)
+
+
+@contextmanager
+def legacy_patterns() -> Iterator[None]:
+    """Temporarily restore the pre-evaluation pattern set.
+
+    Swaps the module-level compiled patterns and restores them on exit, including
+    on exception, so a crash mid-benchmark cannot leave the extractor silently
+    degraded for the rest of the process.
+    """
+    global _COMPILED, _COMPILED_NORMAL, _NEG_RE, _RESOLVED_RE
+    saved = (_COMPILED, _COMPILED_NORMAL, _NEG_RE, _RESOLVED_RE)
+    try:
+        _COMPILED = {
+            finding: tuple(re.compile(p, re.I) for p in patterns)
+            for finding, patterns in LEGACY_FINDING_PATTERNS.items()
+        }
+        _COMPILED_NORMAL = tuple(re.compile(p, re.I) for p in LEGACY_NORMAL_PATTERNS)
+        _NEG_RE = re.compile("|".join(LEGACY_NEGATION_CUES), re.I)
+        # The legacy scope had no resolution handling at all; a pattern that can
+        # never match reproduces that faithfully.
+        _RESOLVED_RE = re.compile(r"(?!x)x")
+        yield
+    finally:
+        _COMPILED, _COMPILED_NORMAL, _NEG_RE, _RESOLVED_RE = saved
+
+
 @dataclass(frozen=True)
 class ExtractedLabel:
     """One finding asserted or denied by the text, with the sentence that says so."""
@@ -269,6 +357,8 @@ def positive_findings(text: str) -> list[Finding]:
 
 __all__ = [
     "FINDING_PATTERNS",
+    "LEGACY_FINDING_PATTERNS",
+    "legacy_patterns",
     "NEGATION_CUES",
     "ExtractedLabel",
     "extract_labels",

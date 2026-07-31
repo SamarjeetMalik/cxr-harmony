@@ -1,4 +1,4 @@
-.PHONY: install dev test lint demo clean docs figures realdata evaluate
+.PHONY: install dev test lint demo clean docs figures realdata evaluate benchmark results
 
 WORK ?= work
 SEED ?= 20260731
@@ -22,6 +22,13 @@ docs:
 
 figures:
 	python scripts/make_figures.py
+	python scripts/make_results_figures.py
+
+benchmark:
+	python scripts/benchmark.py --synthetic --real realdata/unifesp/images
+
+# Everything behind docs/RESULTS.md, from corpus fetch to redrawn figures.
+results: realdata evaluate benchmark figures
 
 # Real public corpora, fetched on demand. Neither is redistributed here:
 # Open-i is CC BY-NC-ND and UNIFESP is CC BY-NC-SA, whose share-alike term
@@ -30,7 +37,9 @@ realdata:
 	python scripts/fetch_real_data.py --openi --unifesp
 
 evaluate: realdata
-	python scripts/evaluate_openi.py --corpus realdata/ecgen-radiology --fold heldout
+	python scripts/evaluate_openi.py --corpus realdata/ecgen-radiology --fold heldout 		--json-out docs/results/openi_heldout.json
+	python scripts/evaluate_openi.py --corpus realdata/ecgen-radiology --fold dev 		--json-out docs/results/openi_dev.json
+	python scripts/evaluate_openi.py --corpus realdata/ecgen-radiology --fold heldout --baseline 		--json-out docs/results/openi_heldout_baseline.json
 	python scripts/run_real_dicom.py --src realdata/unifesp/images --work work-real
 
 # End-to-end demonstration: synthesise a three-site delivery, then run the full
