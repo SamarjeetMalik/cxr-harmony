@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cxr-harmony"
+version = "0.1.0"
+description = "Multi-site chest radiograph ingestion, de-identification, harmonisation and dataset release pipeline"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Samarjeet Malik", email = "samarjeetmalik.gs5@gmail.com" }]
+keywords = ["dicom", "de-identification", "medical-imaging", "data-governance", "chest-x-ray"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+    "pydicom>=3.0",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "pydantic>=2.5",
+    "SQLAlchemy>=2.0",
+    "typer>=0.9",
+    "PyYAML>=6.0",
+    "jsonschema>=4.19",
+    "opencv-python-headless>=4.8",
+    "Pillow>=10.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "pytest-cov>=4.1", "ruff>=0.4"]
+
+[project.scripts]
+cxr-harmony = "cxr_harmony.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/SamarjeetMalik/cxr-harmony"
+Repository = "https://github.com/SamarjeetMalik/cxr-harmony"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
