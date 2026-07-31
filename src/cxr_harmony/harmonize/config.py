@@ -32,7 +32,16 @@ class PatternRule(BaseModel):
     @field_validator("match")
     @classmethod
     def _compilable(cls, v: str) -> str:
-        re.compile(v)  # raises if the config author wrote a bad expression
+        """Reject a malformed expression at load time, naming the offending pattern.
+
+        ``re.error`` does not derive from ``ValueError``, so pydantic would let it
+        escape as a bare regex error with no indication of which config file or
+        which rule produced it.
+        """
+        try:
+            re.compile(v)
+        except re.error as exc:
+            raise ValueError(f"invalid regular expression {v!r}: {exc}") from exc
         return v
 
 

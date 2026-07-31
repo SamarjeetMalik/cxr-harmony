@@ -134,10 +134,16 @@ def harmonize(
 
         facts = facts_by_source.get(row["source_path"], {})
 
-        def resolve(mapping, value: str, field_name: str) -> str | None:
+        def resolve(mapping, value: str, field_name: str, _site: str = site_id) -> str | None:
+            """Resolve one value, counting it when the config had no answer.
+
+            ``_site`` is bound at definition time rather than closed over: the
+            closure is only called within this iteration today, but a later edit
+            that defers a call would otherwise attribute the count to the wrong site.
+            """
             resolved, matched = mapping.resolve(value)
             if not matched and (value or "").strip():
-                unmapped_counter[(site_id, field_name, value.strip())] += 1
+                unmapped_counter[(_site, field_name, value.strip())] += 1
             return resolved
 
         # --- patient

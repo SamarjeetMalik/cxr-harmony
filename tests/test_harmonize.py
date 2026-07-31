@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from pydantic import ValidationError
 
 from cxr_harmony.deid import deidentify
 from cxr_harmony.harmonize import ValueMapping, harmonize, load_site_configs
@@ -54,12 +55,12 @@ def test_a_config_with_an_unknown_key_is_rejected(tmp_path):
         ),
         encoding="utf-8",
     )
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         load_site_configs(tmp_path)
 
 
 def test_an_uncompilable_pattern_is_rejected_at_load():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         SiteConfig.model_validate(
             {
                 "site_id": "SITE_X",
@@ -70,7 +71,7 @@ def test_an_uncompilable_pattern_is_rejected_at_load():
 
 
 def test_an_unknown_label_source_is_rejected():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         SiteConfig.model_validate({"site_id": "SITE_X", "labels": {"source": "telepathy"}})
 
 
