@@ -10,6 +10,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..schema.models import CanonicalDataset
@@ -34,19 +35,53 @@ def _enable_foreign_keys(dbapi_connection, _record) -> None:
     cursor.close()
 
 
-def open_engine(db_path: Path) -> Engine:
-    """Open an engine against a SQLite file, with foreign keys enforced.
+def engine_url(target: Path | str) -> str:
+    """Resolve a path or a URL to a SQLAlchemy URL.
+
+    A ``str`` containing ``://`` is taken as a URL and passed through, so a
+    deployment can point at PostgreSQL without editing code:
+
+        CXR_HARMONY_DB=postgresql+psycopg://user@host/cxr_harmony
+
+    Anything else is a filesystem path to a SQLite file, which is the demo
+    default and stays the default.
+    """
+    if isinstance(target, str) and "://" in target:
+        return target
+    return f"sqlite:///{Path(target).as_posix()}"
+
+
+def uses_sqlite(target: Path | str) -> bool:
+    """Whether this target is SQLite, decided from the URL alone.
+
+    Deliberately not ``create_engine(...).dialect.name``: that constructs the
+    engine, which imports the DBAPI driver, so asking "is this SQLite?" about a
+    PostgreSQL URL would fail on a machine with no ``psycopg`` installed. The
+    question is answerable from the URL, so it is answered from the URL.
+    """
+    return make_url(engine_url(target)).get_backend_name() == "sqlite"
+
+
+def open_engine(db_path: Path | str) -> Engine:
+    """Open an engine against a SQLite file or any SQLAlchemy URL.
 
     Callers are responsible for ``dispose()``; prefer :func:`engine_scope`, which
     does it for them.
+
+    The foreign-key pragma is attached only for SQLite, because it is a SQLite
+    defect being worked around: PostgreSQL enforces declared foreign keys without
+    being asked, and issuing the pragma there would fail on connect. This is the
+    only dialect-specific behaviour in the catalogue, and
+    ``tests/test_postgres_portability.py`` is what keeps it the only one.
     """
-    engine = create_engine(f"sqlite:///{Path(db_path).as_posix()}", future=True)
-    event.listen(engine, "connect", _enable_foreign_keys)
+    engine = create_engine(engine_url(db_path), future=True)
+    if uses_sqlite(db_path):
+        event.listen(engine, "connect", _enable_foreign_keys)
     return engine
 
 
 @contextmanager
-def engine_scope(db_path: Path) -> Iterator[Engine]:
+def engine_scope(db_path: Path | str) -> Iterator[Engine]:
     """An engine that releases its file handle on exit.
 
     SQLAlchemy pools connections, so an undisposed engine holds the SQLite file

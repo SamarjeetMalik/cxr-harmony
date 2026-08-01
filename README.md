@@ -50,7 +50,7 @@ pipeline serves:
 | Cohen's κ vs radiologist annotation (held-out) | **0.897** — target >0.80 |
 | Normal-study detection (strict / vocabulary-adjusted) | **0.854 / 0.932** — was 0.452 / 0.563 |
 | Throughput, real archive, end to end | **88,742/hour** median of 5 runs, **60,531** worst case — target >500 |
-| Tests | **415** |
+| Tests | **430** |
 
 ---
 
@@ -68,6 +68,7 @@ be found does not count. So it is now written down.
 | **Interoperability** | [`interop/fhir.py`](src/cxr_harmony/interop/fhir.py) | FHIR R4 `ImagingStudy`, `DiagnosticReport` and `Observation` resources with SNOMED CT coding, so the cohort is addressable by a hospital system rather than only by this repo. |
 | **Key handling** | [`deid/pseudonym.py`](src/cxr_harmony/deid/pseudonym.py) | `load_or_create_key` **raises** rather than silently creating a key, and warns when it does create one. `Pseudonymiser.from_env()` reads `CXR_HARMONY_KEY` so a mounted secret never touches disk. |
 | **Security audit** | [`Makefile`](Makefile) | `make audit` runs dependency and static checks as a target, not as a habit someone has to remember. |
+| **PostgreSQL portability** | [`deploy/`](deploy/), [`tests/test_postgres_portability.py`](tests/test_postgres_portability.py) | The schema is verified to compile as PostgreSQL DDL with foreign keys intact, and the RLS policies are checked against the live schema rather than living in a Markdown fence. The compose stack itself has never been brought up — stated in the file's own header. |
 | **Deployment gap** | [`docs/deployment.md`](docs/deployment.md) | What separates this demo configuration from a deployment — PostgreSQL with row-level security, object storage, key custody — written out so the gap is explicit rather than assumed closed. |
 | **Redaction audit trail** | [`deid/ocr.py`](src/cxr_harmony/deid/ocr.py) | Optional. Classifies each redacted region and stores a keyed HMAC of its contents, never the text. Runs strictly after the redaction decision, so a missing or broken OCR engine cannot cause PHI to survive; without it the pipeline behaves exactly as before. |
 | **Number traceability** | [`tests/test_docs_consistency.py`](tests/test_docs_consistency.py) | Every headline in this README and in RESULTS.md is pinned to the JSON key it came from, and superseded figures are asserted absent. Added after a stale throughput number survived three revisions of this file. |
@@ -214,7 +215,7 @@ across sites rather than only within one.
 
 ## Verification
 
-Correctness claims here are tested, not asserted. 415 tests, and the ones that
+Correctness claims here are tested, not asserted. 430 tests, and the ones that
 matter most break something first — a QC check that has never been observed to
 fail is not evidence of anything.
 
@@ -332,13 +333,21 @@ Stated because they bear on whether any of this is usable, not for form's sake.
   `images/test/` only. They are the test halves of a competition whose labelled
   training split is not public. Training on invented labels would convert an honest
   `UNVERIFIED` into a confident wrong answer, which is worse than the gate.
-- **Access control is application-level.** It constrains the query helpers, not
-  someone holding the SQLite file, and the module says so rather than implying
-  otherwise. That boundary is infrastructural, not a missing feature: the
-  equivalent PostgreSQL row-level-security policies are written out in
-  [docs/deployment.md](docs/deployment.md) and deliberately not shipped, because
-  half a PostgreSQL deployment would require a running server before `make demo`
-  did anything and still would not be a production configuration.
+- **Access control is application-level in the demo, and the deployment
+  configuration has not been run.** The query helpers enforce roles; someone
+  holding the SQLite file is unconstrained, and the module says so rather than
+  implying otherwise. The PostgreSQL alternative now ships as something startable
+  rather than only readable — [`deploy/docker-compose.yml`](deploy/docker-compose.yml)
+  with row-level-security policies in
+  [`deploy/postgres/01-roles-and-rls.sql`](deploy/postgres/01-roles-and-rls.sql).
+  What is verified is narrow and worth stating exactly: the schema compiles as
+  valid PostgreSQL DDL with all six foreign keys intact, the SQLite-only pragma
+  is not attached to a PostgreSQL engine, and the policies reference only tables
+  and columns that exist. What is **not** verified is that any of it runs — there
+  is no Docker on the machine this was written on and no server in CI, so the
+  policies have never been applied and the MinIO half is configuration for an
+  object-store backend that is still unimplemented. `make demo` is untouched and
+  still needs no server.
 - **The audit trail describes what was removed; it does not keep it.** Detection
   is geometric, so redaction alone knows *where* characters were, not what they
   said. An optional OCR pass (`pip install -e ".[ocr]"` plus a `tesseract` binary)

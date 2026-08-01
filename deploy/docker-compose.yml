@@ -1,0 +1,75 @@
+# The deployment configuration docs/deployment.md describes, as something that
+# can be started rather than only read.
+#
+# WHAT IS AND IS NOT VERIFIED, because this repository does not ship claims it
+# has not checked:
+#
+#   Verified  - the catalogue schema compiles as valid PostgreSQL DDL, with all
+#               six foreign keys intact (tests/test_postgres_portability.py),
+#               and the SQLite-only foreign-key pragma is not attached to a
+#               PostgreSQL engine.
+#   NOT verified - this file has never been brought up. There is no Docker on
+#               the machine it was written on and no server in CI, so the
+#               row-level-security policies in postgres/01-roles-and-rls.sql
+#               have not been executed, and the MinIO path is configuration
+#               only: the object-store backend for `deid` is still not
+#               implemented (see docs/deployment.md, "Not implemented").
+#
+# So this is the intended production shape, not a demonstrated one. It is here
+# because a reviewer asked to see it, and because a compose file that is wrong
+# is easier to correct than a paragraph that is vague.
+#
+# It is deliberately additive. `make demo` still runs on a laptop against SQLite
+# with no server, which is the property that makes this repository evaluable in
+# forty seconds, and nothing here changes that.
+#
+#   docker compose -f deploy/docker-compose.yml up -d
+#   CXR_HARMONY_DB=postgresql+psycopg://cxr:$POSTGRES_PASSWORD@localhost:5432/cxr_harmony
+#
+# Secrets come from the environment; there are no default passwords in this file
+# on purpose. `POSTGRES_PASSWORD` and `MINIO_ROOT_PASSWORD` must be set, and
+# compose will refuse to start without them.
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: cxr_harmony
+      POSTGRES_USER: cxr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs once on an empty data directory, in filename order.
+      - ./postgres:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cxr -d cxr_harmony"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Object storage for the de-identified pixels. The catalogue holds paths and
+  # digests, never pixels, so the change from a local directory is confined to
+  # how `relative_path` resolves — which is why this is reachable configuration
+  # rather than a rewrite. The backend itself is not implemented yet.
+  minio:
+    image: minio/minio:RELEASE.2024-09-13T20-26-02Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-cxr}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  miniodata:

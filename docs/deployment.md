@@ -19,10 +19,27 @@ closed.
 | Encryption at rest | None | Encrypted volume; TDE on PostgreSQL |
 | Concurrency | Single process | Multiple workers against a shared catalogue |
 
-The migration is not attempted here. Half a PostgreSQL deployment in a repository
-somebody evaluates on a laptop is worse than none: it would require a running
-server before `make demo` did anything, and would still not be a production
-configuration.
+The migration is not attempted *in the demo path*, and that has not changed:
+`make demo` still runs on a laptop with no server, which is what makes this
+repository evaluable in forty seconds.
+
+What has changed is that the deployment configuration is now startable rather
+than only readable. [`deploy/docker-compose.yml`](../deploy/docker-compose.yml)
+brings up PostgreSQL and MinIO, and
+[`deploy/postgres/01-roles-and-rls.sql`](../deploy/postgres/01-roles-and-rls.sql)
+applies the roles and row-level-security policies described below. It is
+additive: nothing in the demo path requires it.
+
+**What is verified, and what is not.** `tests/test_postgres_portability.py`
+checks that the catalogue schema compiles as valid PostgreSQL DDL with all six
+foreign keys intact, that the SQLite-only foreign-key pragma is not attached to a
+PostgreSQL engine, and that the policy file references only tables and columns
+the schema actually has. None of that is the same as running it. The compose
+stack has never been brought up — there is no Docker on the machine it was
+written on and no server in CI — so the policies have not been applied to a live
+database, and the MinIO service is configuration for an object-store backend that
+remains unimplemented. This is the intended production shape, not a demonstrated
+one, and the compose file says so in its own header.
 
 ---
 
