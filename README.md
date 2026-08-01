@@ -50,7 +50,7 @@ pipeline serves:
 | Cohen's κ vs radiologist annotation (held-out) | **0.897** — target >0.80 |
 | Normal-study detection (strict / vocabulary-adjusted) | **0.854 / 0.932** — was 0.452 / 0.563 |
 | Throughput, real archive, end to end | **88,742/hour** median of 5 runs, **60,531** worst case — target >500 |
-| Tests | **383** |
+| Tests | **385** |
 
 ---
 
@@ -70,6 +70,7 @@ be found does not count. So it is now written down.
 | **Security audit** | [`Makefile`](Makefile) | `make audit` runs dependency and static checks as a target, not as a habit someone has to remember. |
 | **Deployment gap** | [`docs/deployment.md`](docs/deployment.md) | What separates this demo configuration from a deployment — PostgreSQL with row-level security, object storage, key custody — written out so the gap is explicit rather than assumed closed. |
 | **Number traceability** | [`tests/test_docs_consistency.py`](tests/test_docs_consistency.py) | Every headline in this README and in RESULTS.md is pinned to the JSON key it came from, and superseded figures are asserted absent. Added after a stale throughput number survived three revisions of this file. |
+| **Figure traceability** | [`tests/test_figures_current.py`](tests/test_figures_current.py), [`docs/figures/MANIFEST.json`](docs/figures/MANIFEST.json) | Every plot is rendered by matplotlib from the same results JSONs, never drawn by hand. The manifest records which digests they were built from, so a results file that changes without `make figures` being rerun fails the build — a stale chart is harder to notice than a stale number, not easier. |
 
 ---
 
@@ -212,7 +213,7 @@ across sites rather than only within one.
 
 ## Verification
 
-Correctness claims here are tested, not asserted. 383 tests, and the ones that
+Correctness claims here are tested, not asserted. 385 tests, and the ones that
 matter most break something first — a QC check that has never been observed to
 fail is not evidence of anything.
 

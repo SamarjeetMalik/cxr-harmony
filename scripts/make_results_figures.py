@@ -15,6 +15,7 @@ licensed against redistribution, and a figure is redistribution.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -536,6 +537,61 @@ def fig_throughput() -> Path | None:
     return path
 
 
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _display(path: Path) -> str:
+    """Repo-relative when it can be, absolute otherwise.
+
+    ``FIGURES`` is redirected out of the repo when the currency test re-renders
+    into a temporary directory, and ``relative_to`` raises rather than falling
+    back on a path outside its base.
+    """
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def write_manifest() -> Path:
+    """Record what these figures were rendered from, and by what.
+
+    RESULTS.md claims every figure is regenerated from the JSON under
+    ``docs/results/``. Nothing enforced it: editing a results file without
+    rerunning this script left a committed PNG showing superseded numbers, and a
+    plot is harder to spot as stale than a number in a table, not easier.
+
+    So the source digests are recorded here and checked by
+    ``tests/test_figures_current.py``. That check is platform-independent —
+    comparing hashes of the *inputs* needs no rendering — which matters because
+    comparing the PNGs themselves only works where the renderer matches. The
+    renderer versions are recorded for exactly that reason.
+    """
+    manifest = {
+        "note": (
+            "Written by scripts/make_results_figures.py. 'sources' are the digests of "
+            "the results JSONs these figures were rendered from; if a source digest no "
+            "longer matches, the committed figures are stale and `make figures` needs "
+            "rerunning. 'renderer' records what drew them, because byte-identical PNG "
+            "comparison is only meaningful against the same matplotlib and FreeType."
+        ),
+        "renderer": {
+            "matplotlib": matplotlib.__version__,
+            "freetype": matplotlib.ft2font.__freetype_version__,
+        },
+        "sources": {
+            path.name: _sha256(path) for path in sorted(RESULTS.glob("*.json"))
+        },
+        "figures": {
+            path.name: _sha256(path) for path in sorted(FIGURES.glob("results_*.png"))
+        },
+    }
+    path = FIGURES / "MANIFEST.json"
+    path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
 def main() -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
     builders = (
@@ -552,9 +608,12 @@ def main() -> None:
         print(f"building {builder.__name__} ...")
         path = builder()
         if path is not None:
-            print(f"  wrote {path.relative_to(ROOT)}")
+            print(f"  wrote {_display(path)}")
             written += 1
     print(f"\n{written} of {len(builders)} results figures written")
+
+    manifest = write_manifest()
+    print(f"wrote {_display(manifest)} (source digests + renderer versions)")
 
 
 if __name__ == "__main__":

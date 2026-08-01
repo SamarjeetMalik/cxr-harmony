@@ -1,0 +1,25 @@
+{
+  "figures": {
+    "results_dev_vs_heldout.png": "d539c0e36644023b280c1036b1ea40ffe532a98d1fe892657f8699a34125c4de",
+    "results_equity.png": "e076d0e5dfaad4ac6797d0361201b27f8af82777ca8b017ada283d42e0056e1b",
+    "results_improvement.png": "e93715c7d03e7343f7534f97f1f16f2cadfca6308cc5d423d6040f240ff74401",
+    "results_openi_per_finding.png": "4a9d3d20503bd381766c247211aa224031be0fa0a0855ca11ad977cbb6d71b90",
+    "results_real_dicom.png": "5bbf1127321e9d2a7141ebe5a958f8b594306c000a42392c9015d39f3cccdc7a",
+    "results_targets.png": "a57902280de9ef400eacb2b01439eb85859b6f7232de81e421410137bbc0db7e",
+    "results_throughput.png": "b91aedb96a7a6e8c5d59e3a88cca30e9dfc9d703802858d3c62772e4c05577b2"
+  },
+  "note": "Written by scripts/make_results_figures.py. 'sources' are the digests of the results JSONs these figures were rendered from; if a source digest no longer matches, the committed figures are stale and `make figures` needs rerunning. 'renderer' records what drew them, because byte-identical PNG comparison is only meaningful against the same matplotlib and FreeType.",
+  "renderer": {
+    "freetype": "2.6.1",
+    "matplotlib": "3.9.0"
+  },
+  "sources": {
+    "benchmark.json": "b4682dd7e7d9bee04b75dd7269243b6ba6eca2214f41c8439dae2755dd69ee48",
+    "equity.json": "d83e7a0ba5d582488089dd8f45b6b80e41d939579b97e1362b6de81750dbe1df",
+    "openi_all.json": "dea506dac1ad30441d30a9ff968e9746d24a6db873df1a88d36053b1247442a8",
+    "openi_dev.json": "ae4cffd71f8ba272689669f2a3d0f74463a1922c33d45eb6970397ccd2ee70ef",
+    "openi_heldout.json": "d05464e2158c4a2507da6136489aef9b081ffb2941b54de0171ddfa626e1c611",
+    "openi_heldout_baseline.json": "32b699fdacbe61acd4d5fc7201f0aa37d61f2bcb59e3b7ad7d029c7f55bce5e5",
+    "real_dicom.json": "11a31adacb2f938affb08bc074198ac62a817441b0ea76f92192be21bbf7ae21"
+  }
+}
