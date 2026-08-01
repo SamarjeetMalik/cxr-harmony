@@ -41,6 +41,7 @@ import pydicom
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cxr_harmony.deid.ocr import (  # noqa: E402
+    MIN_CONFIDENCE,
     TextCategory,
     available,
     describe_redactions,
@@ -124,6 +125,7 @@ def measure(src: Path) -> dict:
         "median_area_pct_read_as_nothing": (
             round(statistics.median(areas_unreadable), 3) if areas_unreadable else 0.0
         ),
+        "min_confidence": MIN_CONFIDENCE,
         "interpretation": (
             "An UPPER BOUND on the false-positive rate, not the rate. A region "
             "read as nothing is a *candidate* false positive: OCR also fails on "
@@ -131,7 +133,10 @@ def measure(src: Path) -> dict:
             "its model does not cover, and every such failure inflates this "
             "figure. The true rate is at most this and probably lower. Says "
             "nothing about recall: regions the detector never proposed cannot be "
-            "inspected by a method that only examines proposals."
+            "inspected by a method that only examines proposals. Sensitive to "
+            "min_confidence: readings below it are discarded as noise, because "
+            "tesseract returns low-confidence characters from blank regions, and "
+            "counting those as text would bias this bound downwards."
         ),
     }
 

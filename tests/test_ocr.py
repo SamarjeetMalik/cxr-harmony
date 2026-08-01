@@ -182,7 +182,35 @@ def test_a_blank_region_reads_as_unreadable():
     Distinguishing them would require knowing what was there, which is the thing
     that cannot be known. Conflating them is what makes the false-positive figure
     an upper bound rather than a rate.
+
+    This failed when first run on CI: tesseract returned two characters at
+    confidence 18 from a blank canvas, which became an OTHER_TEXT record with a
+    digest. :data:`MIN_CONFIDENCE` exists because of this test.
     """
     audits = describe_redactions(_canvas(), FULL, key=KEY)
     assert audits and audits[0].category is TextCategory.UNREADABLE
     assert audits[0].digest is None
+
+
+@requires_ocr
+def test_a_low_confidence_reading_is_discarded_not_recorded():
+    """Hallucinated text must not reach the audit trail or the FP measurement.
+
+    Recording it would corrupt both: the trail gains regions that never held
+    text, and the false-positive bound counts a hallucination as evidence the
+    box was genuine — biasing the bound downwards, which flatters the detector.
+    """
+    import cxr_harmony.deid.ocr as ocr_module
+
+    # Force every reading below the floor. Nothing may survive with a digest.
+    original = ocr_module.MIN_CONFIDENCE
+    try:
+        ocr_module.MIN_CONFIDENCE = 101.0
+        audits = describe_redactions(_render("PRIYA SHARMA"), FULL, key=KEY)
+    finally:
+        ocr_module.MIN_CONFIDENCE = original
+
+    assert audits
+    assert audits[0].category is TextCategory.UNREADABLE
+    assert audits[0].digest is None
+    assert audits[0].char_count == 0

@@ -41,11 +41,13 @@ from __future__ import annotations
 import hmac
 import re
 from dataclasses import dataclass
-from enum import StrEnum
 from hashlib import sha256
 
 import numpy as np
 
+# The project's own shim, not `enum.StrEnum`, which needs 3.11 while this
+# supports 3.10. Caught by CI on the matrix's oldest interpreter.
+from ..schema.vocab import StrEnum
 from .pixels import TextRegion
 
 __all__ = [
@@ -60,6 +62,22 @@ __all__ = [
 #: Domain separator, so an audit MAC can never be confused with a pseudonym or a
 #: remapped UID derived from the same key.
 _MAC_DOMAIN = "burned-in-audit"
+
+#: Below this mean word confidence, a reading is discarded as noise.
+#:
+#: Not a tuning knob — a correctness floor. Tesseract given a **blank** region
+#: returned two characters at confidence 18.0, which arrived here as OTHER_TEXT
+#: with a digest. Left alone that is corrosive in two directions: the audit trail
+#: gains records of text that was never there, and
+#: ``scripts/measure_burned_in_fp.py`` counts a hallucinated read as evidence
+#: that a spurious box held real text — biasing the false-positive bound
+#: *downwards*, which is the direction that flatters the detector.
+#:
+#: 40 is a judgement, not a measurement: genuine burned-in annotation in this
+#: corpus reads well above it and blank-region noise well below, but the gap has
+#: not been characterised the way the edge-density threshold was. The
+#: false-positive figure is sensitive to this value, and says so.
+MIN_CONFIDENCE = 40.0
 
 
 class OcrUnavailable(RuntimeError):
@@ -232,6 +250,10 @@ def describe_redactions(
 
         text, confidence = _read(pytesseract, crop)
         normalised = _normalise(text)
+        if confidence < MIN_CONFIDENCE:
+            # Discard rather than record. A low-confidence read is not weak
+            # evidence of text, it is evidence of noise: see MIN_CONFIDENCE.
+            normalised = ""
         if not normalised:
             audits.append(
                 RedactionAudit(region, TextCategory.UNREADABLE, 0, confidence, None)
