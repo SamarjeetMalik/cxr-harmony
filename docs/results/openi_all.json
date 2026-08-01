@@ -1,21 +1,21 @@
 {
   "baseline": false,
-  "exact_match_rate": 0.934,
+  "exact_match_rate": 0.9346,
   "kappa": {
     "per_finding": {
       "ATELECTASIS": {
-        "expected_agreement": 0.8215,
+        "expected_agreement": 0.8211,
         "interpretation": "almost perfect",
-        "kappa": 0.9715,
+        "kappa": 0.9744,
         "label": "ATELECTASIS",
-        "observed_agreement": 0.9949,
-        "prevalence": 0.0998,
+        "observed_agreement": 0.9954,
+        "prevalence": 0.1003,
         "reliable": true,
-        "support": 392,
+        "support": 394,
         "table": {
           "both_negative": 3528,
-          "both_positive": 379,
-          "only_first": 7,
+          "both_positive": 381,
+          "only_first": 5,
           "only_second": 13
         }
       },
@@ -149,30 +149,30 @@
       }
     },
     "pooled": {
-      "expected_agreement": 0.9219,
+      "expected_agreement": 0.9218,
       "interpretation": "almost perfect",
-      "kappa": 0.8983,
+      "kappa": 0.899,
       "label": "pooled",
-      "observed_agreement": 0.992,
+      "observed_agreement": 0.9921,
       "prevalence": 0.0403,
       "reliable": true,
-      "support": 1423,
+      "support": 1425,
       "table": {
         "both_negative": 33763,
-        "both_positive": 1299,
-        "only_first": 157,
+        "both_positive": 1301,
+        "only_first": 155,
         "only_second": 124
       }
     }
   },
-  "macro_f1": 0.8723,
+  "macro_f1": 0.8726,
   "micro": {
-    "f1": 0.9024,
+    "f1": 0.9032,
     "fn": 124,
-    "fp": 157,
-    "precision": 0.8922,
-    "recall": 0.9129,
-    "tp": 1299
+    "fp": 155,
+    "precision": 0.8935,
+    "recall": 0.913,
+    "tp": 1301
   },
   "n_reports": 3927,
   "normal_detection": {
@@ -180,6 +180,55 @@
     "precision": 0.834,
     "recall": 0.8861,
     "support": 1457
+  },
+  "normal_detection_errors": {
+    "called_normal_but_annotated_abnormal": 257,
+    "distinct_out_of_vocabulary_terms": 149,
+    "most_common": [
+      {
+        "studies": 64,
+        "term": "lung"
+      },
+      {
+        "studies": 29,
+        "term": "markings"
+      },
+      {
+        "studies": 22,
+        "term": "opacity"
+      },
+      {
+        "studies": 21,
+        "term": "catheters, indwelling"
+      },
+      {
+        "studies": 16,
+        "term": "diaphragm"
+      },
+      {
+        "studies": 15,
+        "term": "foreign bodies"
+      },
+      {
+        "studies": 15,
+        "term": "aorta, thoracic"
+      },
+      {
+        "studies": 12,
+        "term": "thoracic aorta"
+      },
+      {
+        "studies": 12,
+        "term": "scoliosis"
+      },
+      {
+        "studies": 11,
+        "term": "technical quality of image unsatisfactory"
+      }
+    ],
+    "note": "the decomposition behind reporting normal detection twice: a study wrongly called normal is either a genuine extraction miss (carried a canonical finding) or a vocabulary gap (everything annotated lies outside the nine findings). Run with --baseline for the pre-OTHER-detection figures.",
+    "of_which_carried_a_canonical_finding": 13,
+    "out_of_vocabulary_mentions": 519
   },
   "normal_detection_vocabulary_adjusted": {
     "f1": 0.9352,
@@ -190,13 +239,13 @@
   },
   "per_finding": {
     "ATELECTASIS": {
-      "f1": 0.9743,
+      "f1": 0.9769,
       "fn": 13,
-      "fp": 7,
-      "precision": 0.9819,
-      "recall": 0.9668,
-      "support": 392,
-      "tp": 379
+      "fp": 5,
+      "precision": 0.987,
+      "recall": 0.967,
+      "support": 394,
+      "tp": 381
     },
     "CARDIOMEGALY": {
       "f1": 0.8745,
@@ -270,5 +319,182 @@
       "support": 7,
       "tp": 6
     }
+  },
+  "vocabulary_coverage": {
+    "concepts": {
+      "distinct_terms": 628,
+      "mentions": 13188,
+      "most_common": [
+        {
+          "studies": 1396,
+          "term": "lung"
+        },
+        {
+          "studies": 487,
+          "term": "thoracic vertebrae"
+        },
+        {
+          "studies": 474,
+          "term": "degenerative"
+        },
+        {
+          "studies": 463,
+          "term": "opacity"
+        },
+        {
+          "studies": 404,
+          "term": "degenerative change"
+        },
+        {
+          "studies": 321,
+          "term": "calcinosis"
+        },
+        {
+          "studies": 305,
+          "term": "aorta"
+        },
+        {
+          "studies": 291,
+          "term": "hypoinflation"
+        },
+        {
+          "studies": 278,
+          "term": "calcified granuloma"
+        },
+        {
+          "studies": 252,
+          "term": "tortuous"
+        },
+        {
+          "studies": 222,
+          "term": "spine"
+        },
+        {
+          "studies": 216,
+          "term": "hyperdistention"
+        },
+        {
+          "studies": 205,
+          "term": "scarring"
+        },
+        {
+          "studies": 203,
+          "term": "hilum"
+        },
+        {
+          "studies": 201,
+          "term": "cicatrix"
+        },
+        {
+          "studies": 191,
+          "term": "lower lobe"
+        },
+        {
+          "studies": 168,
+          "term": "upper lobe"
+        },
+        {
+          "studies": 166,
+          "term": "diaphragm"
+        },
+        {
+          "studies": 163,
+          "term": "markings"
+        },
+        {
+          "studies": 152,
+          "term": "interstitial"
+        }
+      ],
+      "studies_affected": 2436
+    },
+    "head_terms": {
+      "distinct_terms": 604,
+      "mentions": 8925,
+      "most_common": [
+        {
+          "studies": 554,
+          "term": "lung"
+        },
+        {
+          "studies": 463,
+          "term": "opacity"
+        },
+        {
+          "studies": 404,
+          "term": "degenerative change"
+        },
+        {
+          "studies": 321,
+          "term": "calcinosis"
+        },
+        {
+          "studies": 291,
+          "term": "thoracic vertebrae"
+        },
+        {
+          "studies": 278,
+          "term": "calcified granuloma"
+        },
+        {
+          "studies": 205,
+          "term": "scarring"
+        },
+        {
+          "studies": 204,
+          "term": "spine"
+        },
+        {
+          "studies": 201,
+          "term": "cicatrix"
+        },
+        {
+          "studies": 180,
+          "term": "aorta"
+        },
+        {
+          "studies": 164,
+          "term": "diaphragm"
+        },
+        {
+          "studies": 163,
+          "term": "markings"
+        },
+        {
+          "studies": 136,
+          "term": "granuloma"
+        },
+        {
+          "studies": 132,
+          "term": "atherosclerosis"
+        },
+        {
+          "studies": 125,
+          "term": "airspace disease"
+        },
+        {
+          "studies": 125,
+          "term": "catheters, indwelling"
+        },
+        {
+          "studies": 124,
+          "term": "deformity"
+        },
+        {
+          "studies": 118,
+          "term": "density"
+        },
+        {
+          "studies": 115,
+          "term": "granulomatous disease"
+        },
+        {
+          "studies": 110,
+          "term": "implanted medical device"
+        }
+      ],
+      "studies_affected": 2417
+    },
+    "n_reports": 3927
   }
 }

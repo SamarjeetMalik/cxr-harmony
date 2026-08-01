@@ -73,11 +73,21 @@ Held-out half, n = 1,965 reports:
 ### Normal detection is reported two ways, and the gap is the point
 
 An earlier version of this scored **0.674** and it was read as "a third of normal
-studies are missed". Measured, recall was 0.907 — the deficit was *precision*, 577
-studies wrongly called normal. Decomposing them found only **20** were canonical
-findings the extractor missed. The rest were **244 distinct MeSH terms with no
-counterpart in the nine-finding vocabulary**, 2,125 mentions: calcified granuloma
-(181), degenerative change (134), calcinosis (101), emphysema (37).
+studies are missed". Measured, the deficit was *precision*, not recall.
+
+On the held-out half, the baseline extractor called **279** studies normal that
+were annotated abnormal. Only **21** of those carried a canonical finding it had
+missed — a genuine extraction error. The other **187 distinct MeSH terms**, over
+871 mentions, have no counterpart in the nine-finding vocabulary at all. After
+`OTHER` detection the same count falls to **135**, of which **8** are genuine
+misses.
+
+> These four figures previously read 577 / 20 / 244 / 2,125 and could not be
+> reproduced from the committed code at any scoping — held-out, full corpus,
+> baseline or current. They have been replaced by figures the evaluation now
+> emits to `normal_detection_errors` in the results JSON, so they are read rather
+> than remembered. On a page whose first line is "nothing here is transcribed by
+> hand", four numbers had been.
 
 That is a definitional mismatch, not an extraction defect. `NO_FINDING` here means
 "none of my nine findings"; Open-i `normal` means "nothing whatsoever indexed".
@@ -109,7 +119,7 @@ score on that half is optimistic by construction.
 
 ![Dev versus held-out](figures/results_dev_vs_heldout.png)
 
-Dev micro F1 **0.9034**, held-out **0.9013** — a gap of 0.002. The corrections
+Dev micro F1 **0.9049**, held-out **0.9013** — a gap of 0.004. The corrections
 were linguistic generalisations, not curve-fitting.
 
 ---
@@ -318,9 +328,12 @@ Coverage on `deid`, the package where a defect is a disclosure, is 94%.
   synthetic evidence is what stands.
 - **That the extractor holds up on Indian partner-site prose.** Open-i is two
   Indiana hospital systems. House style varies; a new archive needs re-scoring.
-- **That the nine-finding vocabulary is sufficient.** 244 distinct MeSH terms in
-  one corpus fall outside it. They are now detected as `OTHER` rather than
-  silently dropped, but `OTHER` is a holding pen, not a label anyone can train on.
+- **That the nine-finding vocabulary is sufficient.** It is not, and the gap is
+  wider than previously stated: **604 distinct MeSH terms** fall outside it,
+  affecting **2,417 of 3,927 studies** — 62% of the corpus. They are detected as
+  `OTHER` rather than silently dropped, but `OTHER` is a holding pen, not a label
+  anyone can train on. Expanding the vocabulary does not close this: the tail is
+  long, with the twenty commonest terms covering only half the mentions.
 - **That burned-in false positives have been fixed.** They have not. Two filters
   were implemented and measured, and both were rejected: glyph sub-structure left
   PHI surviving on 53 of 80 images (text lines contain one or two components at

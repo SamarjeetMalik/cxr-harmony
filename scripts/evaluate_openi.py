@@ -15,6 +15,7 @@ Usage:  python scripts/evaluate_openi.py --corpus realdata/ecgen-radiology
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import sys
 from dataclasses import dataclass
@@ -22,7 +23,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from cxr_harmony.adapters.openi import MESH_TO_FINDING, load_corpus  # noqa: E402
+from cxr_harmony.adapters.openi import (  # noqa: E402
+    MESH_TO_FINDING,
+    NORMAL_TERMS,
+    load_corpus,
+    mesh_concepts,
+)
 from cxr_harmony.qc.agreement import agreement_by_label, pooled_kappa  # noqa: E402
 from cxr_harmony.reports.labels import legacy_patterns, positive_findings  # noqa: E402
 from cxr_harmony.reports.parser import clinical_text, parse_sections  # noqa: E402
@@ -122,6 +128,8 @@ def _score(reports: list, *, baseline: bool) -> dict:
 
     per_finding: dict[Finding, Score] = {f: Score() for f in SCORED}
     normal_tp = normal_fp = normal_fn = 0
+    normal_fp_canonical = 0
+    normal_fp_terms: collections.Counter[str] = collections.Counter()
     adj_tp = adj_fp = adj_fn = 0
     exact = 0
     examples_missed: dict[str, list[str]] = {}
@@ -167,6 +175,25 @@ def _score(reports: list, *, baseline: bool) -> dict:
             normal_tp += 1
         elif pred_normal:
             normal_fp += 1
+            # Decompose this error while the study is in hand. A study called
+            # normal that is annotated abnormal is either a real extraction miss
+            # (a canonical finding was there and was not found) or a vocabulary
+            # gap (everything annotated lies outside the nine findings). The
+            # split is the whole argument for reporting normal detection twice,
+            # and it used to be quoted from an analysis nobody could rerun.
+            spurious_oov = set()
+            carried_canonical = False
+            for term in report.mesh_terms:
+                head = term.split("/")[0].strip().lower()
+                if head in NORMAL_TERMS:
+                    continue
+                if head in MESH_TO_FINDING:
+                    carried_canonical = True
+                else:
+                    spurious_oov.add(head)
+            if carried_canonical:
+                normal_fp_canonical += 1
+            normal_fp_terms.update(spurious_oov)
         elif truth_normal:
             normal_fn += 1
 
@@ -252,8 +279,78 @@ def _score(reports: list, *, baseline: bool) -> dict:
             "pooled": pooled.to_dict(),
             "per_finding": {k: v.to_dict() for k, v in sorted(agreements.items())},
         },
+        "normal_detection_errors": {
+            "called_normal_but_annotated_abnormal": normal_fp,
+            "of_which_carried_a_canonical_finding": normal_fp_canonical,
+            "distinct_out_of_vocabulary_terms": len(normal_fp_terms),
+            "out_of_vocabulary_mentions": sum(normal_fp_terms.values()),
+            "most_common": [
+                {"term": t, "studies": n} for t, n in normal_fp_terms.most_common(10)
+            ],
+            "note": (
+                "the decomposition behind reporting normal detection twice: a "
+                "study wrongly called normal is either a genuine extraction miss "
+                "(carried a canonical finding) or a vocabulary gap (everything "
+                "annotated lies outside the nine findings). Run with --baseline "
+                "for the pre-OTHER-detection figures."
+            ),
+        },
+        "vocabulary_coverage": _vocabulary_coverage(reports),
         "examples_missed": examples_missed,
         "examples_spurious": examples_spurious,
+    }
+
+
+def _vocabulary_coverage(reports: list) -> dict:
+    """How much of this corpus the nine-finding vocabulary cannot express.
+
+    Reported because the README states it as a limitation, and a limitation
+    quoted from memory drifts like any other number. It was previously written as
+    "244 distinct MeSH terms", which is the count *within the 577 studies
+    normal-detection got wrong* — not, as the wording implied, across the corpus.
+    Corpus-wide the tail is far heavier, and saying so is the honest form of the
+    limitation.
+
+    Counted two ways, because they answer different questions. ``head_terms``
+    matches how scoring works. ``concepts`` splits slash-qualified terms via
+    :func:`mesh_concepts`, which is the better *description*: head-only counting
+    reports ``Lung/hypoinflation`` as "lung", making the tail look like a list of
+    anatomy when it is a list of findings the vocabulary cannot express. Neither
+    count changes any score.
+    """
+
+    def tally(use_concepts: bool) -> dict:
+        distinct: collections.Counter[str] = collections.Counter()
+        studies = 0
+        for report in reports:
+            hit = set()
+            for term in report.mesh_terms:
+                candidates = (
+                    mesh_concepts(term)
+                    if use_concepts
+                    else [term.split("/")[0].strip().lower()]
+                )
+                hit.update(
+                    c
+                    for c in candidates
+                    if c not in NORMAL_TERMS and c not in MESH_TO_FINDING
+                )
+            if hit:
+                studies += 1
+            distinct.update(hit)
+        return {
+            "distinct_terms": len(distinct),
+            "mentions": sum(distinct.values()),
+            "studies_affected": studies,
+            "most_common": [
+                {"term": t, "studies": n} for t, n in distinct.most_common(20)
+            ],
+        }
+
+    return {
+        "n_reports": len(reports),
+        "head_terms": tally(False),
+        "concepts": tally(True),
     }
 
 

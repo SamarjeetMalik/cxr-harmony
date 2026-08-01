@@ -1,6 +1,6 @@
 {
   "figures": {
-    "results_dev_vs_heldout.png": "d539c0e36644023b280c1036b1ea40ffe532a98d1fe892657f8699a34125c4de",
+    "results_dev_vs_heldout.png": "6d594510cceb1aef9547accb54a861de5f25249fa6528d2fda787001792ff5e2",
     "results_equity.png": "e076d0e5dfaad4ac6797d0361201b27f8af82777ca8b017ada283d42e0056e1b",
     "results_improvement.png": "e93715c7d03e7343f7534f97f1f16f2cadfca6308cc5d423d6040f240ff74401",
     "results_openi_per_finding.png": "4a9d3d20503bd381766c247211aa224031be0fa0a0855ca11ad977cbb6d71b90",
@@ -16,10 +16,10 @@
   "sources": {
     "benchmark.json": "a24bb9e66df1916f5bfdacf53edd0c237cdeaba3fa44dfc9090dc62c31b698b4",
     "equity.json": "827b41d68e5b67a9f9c40df7c2f33fcb70d6d640b0b89484f8011294a7c336ac",
-    "openi_all.json": "de82804892a918029050f99e47d1445bc015f593450e62d5494cf506ab7167e5",
-    "openi_dev.json": "19620d2dfb4b2f964550cf9745b04e487c4a2141ab2ff31f511adb9e58d8c339",
-    "openi_heldout.json": "4f8a3615c35a58cf39b2c2734ec5cfbeb5c9bf34c55b50fd65032840c8f4c128",
-    "openi_heldout_baseline.json": "325714d1103a3302a16ecaf301913114317c8e2c9edbc1f5183365483d920dda",
+    "openi_all.json": "475612fe5f3baf4d994e96312ad6d30532f70f094ad34af12e9f1e06571275da",
+    "openi_dev.json": "9c8200cae607fd42954bce6dcf02d50006d104ceac513ac35bb0d990fdce49c8",
+    "openi_heldout.json": "de98019637727a012d91199ef8b532b5c44182a2d702f7ce797fded29e14eb29",
+    "openi_heldout_baseline.json": "092d02d7116cf5e93bed73d13e026faa2485a3d866d302ca63cdd719ae0c6ddb",
     "real_dicom.json": "5cbc59eceb5508adca596398b955b7dff9e3d35f5873277f2ed390fef082b00a"
   }
 }

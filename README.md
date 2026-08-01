@@ -50,7 +50,7 @@ pipeline serves:
 | Cohen's κ vs radiologist annotation (held-out) | **0.897** — target >0.80 |
 | Normal-study detection (strict / vocabulary-adjusted) | **0.854 / 0.932** — was 0.452 / 0.563 |
 | Throughput, real archive, end to end | **88,742/hour** median of 5 runs, **60,531** worst case — target >500 |
-| Tests | **387** |
+| Tests | **400** |
 
 ---
 
@@ -213,7 +213,7 @@ across sites rather than only within one.
 
 ## Verification
 
-Correctness claims here are tested, not asserted. 387 tests, and the ones that
+Correctness claims here are tested, not asserted. 400 tests, and the ones that
 matter most break something first — a QC check that has never been observed to
 fail is not evidence of anything.
 
@@ -287,10 +287,13 @@ Stated because they bear on whether any of this is usable, not for form's sake.
   Measured against radiologist MeSH annotation on a held-out half of Open-i, it is
   micro F1 0.901. Real prose exposed four outright defects, all now
   regression-tested; see [docs/real-data-evaluation.md](docs/real-data-evaluation.md).
-- **The nine-finding vocabulary is not sufficient for real annotation.** One corpus
-  contained 244 distinct MeSH terms outside it. Those are now detected as `OTHER`
-  rather than silently labelled "no finding", which took normal-study detection
-  from 0.452 to 0.854 strict — but `OTHER` is a holding pen, not a trainable label.
+- **The nine-finding vocabulary is not sufficient for real annotation.** Across
+  Open-i, **604 distinct MeSH terms** fall outside it, affecting **2,417 of 3,927
+  studies** — 62% of the corpus. Those are detected as `OTHER` rather than
+  silently labelled "no finding", which took normal-study detection from 0.452 to
+  0.854 strict — but `OTHER` is a holding pen, not a trainable label. Adding
+  labels does not fix it: the tail is long enough that the twenty commonest terms
+  cover only half the mentions, and the rest have too little support to train on.
 - **Burned-in false positives are not fixed.** Two filters were implemented,
   measured, and rejected: one left PHI surviving on 53 of 80 images, the other
   could not be validated against any ground truth. Over-redaction remains, in the

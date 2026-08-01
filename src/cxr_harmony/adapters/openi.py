@@ -38,6 +38,20 @@ REDACTION_TOKEN = "XXXX"
 #: Open-i terms are slash-qualified ("Cardiomegaly/mild", "Pulmonary
 #: Atelectasis/base"), so matching is on the head term. Terms with no canonical
 #: counterpart map to OTHER rather than being dropped, so coverage stays visible.
+#:
+#: Head-only matching was questioned, because the corpus also contains terms whose
+#: head is *anatomy* and whose qualifier is the finding — "Lung/hypoinflation",
+#: "Thoracic Vertebrae/degenerative". Those look like the head-only rule would
+#: lose the finding. Measured over all 3,927 parsable reports, it does not: no
+#: qualifier anywhere in the corpus names a canonical finding that its head
+#: missed, so head-only and head-plus-qualifier scoring produce identical
+#: reference sets and identical out-of-vocabulary verdicts. That equivalence is
+#: pinned by ``test_qualifier_parsing_does_not_change_scoring`` rather than left
+#: as a comment, because it is a property of this corpus and could stop holding
+#: on another one.
+#:
+#: The qualifiers still matter for *describing* the out-of-vocabulary tail — see
+#: :func:`mesh_concepts` — just not for scoring against it.
 MESH_TO_FINDING: dict[str, Finding] = {
     "normal": Finding.NO_FINDING,
     "cardiomegaly": Finding.CARDIOMEGALY,
@@ -50,6 +64,11 @@ MESH_TO_FINDING: dict[str, Finding] = {
     "pulmonary congestion": Finding.PULMONARY_EDEMA,
     "pulmonary atelectasis": Finding.ATELECTASIS,
     "atelectasis": Finding.ATELECTASIS,
+    # The corpus uses the plural 348 times. Its absence here was an oversight
+    # rather than a decision — the plural of "pleural effusion" is mapped two
+    # lines above. The correction is small: 346 of those 348 studies already
+    # carry ATELECTASIS through another term, so only 2 gain it.
+    "atelectases": Finding.ATELECTASIS,
     "nodule": Finding.NODULE,
     "pulmonary nodule": Finding.NODULE,
     "solitary pulmonary nodule": Finding.NODULE,
@@ -62,6 +81,47 @@ MESH_TO_FINDING: dict[str, Finding] = {
 
 #: Terms that assert the study is unremarkable.
 NORMAL_TERMS = {"normal", "no indexing"}
+
+#: Qualifiers that grade or place a finding without naming one.
+#:
+#: Drawn from the 87 distinct qualifiers the corpus actually uses, not guessed.
+#: Counting these as out-of-vocabulary "terms" would inflate the tail with words
+#: like "mild" that no vocabulary would ever want to express.
+MESH_MODIFIERS = frozenset(
+    {
+        # Degree.
+        "mild", "moderate", "severe", "small", "large", "borderline", "prominent",
+        "multiple", "scattered", "chronic", "acute", "focal", "diffuse", "patchy",
+        "streaky", "round", "enlarged", "elevated", "flattened", "blunted",
+        # Laterality and position. These name where, never what.
+        "right", "left", "bilateral", "anterior", "posterior", "lateral",
+        "upper", "lower", "middle", "base", "apex",
+    }
+)
+
+
+def mesh_concepts(term: str) -> list[str]:
+    """Split a slash-qualified MeSH term into the concepts it actually names.
+
+    ``"Thoracic Vertebrae/degenerative/mild"`` yields ``["thoracic vertebrae",
+    "degenerative"]`` — the grading qualifier is dropped, the finding kept.
+
+    **This is for description, not scoring.** Scoring uses the head term alone,
+    and switching it to use this function changes nothing: measured over the
+    whole corpus, no qualifier names a canonical finding its head missed. What
+    this does change is how the out-of-vocabulary tail is *characterised*.
+    Head-only counting reports ``Lung/hypoinflation`` as the term "lung", which
+    makes the tail look like a list of anatomy when it is really a list of
+    findings the vocabulary cannot express. Naming "hypoinflation" is the honest
+    description of what is missing.
+    """
+    parts = [p.strip().lower() for p in term.split("/") if p.strip()]
+    if not parts:
+        return []
+    concepts = [parts[0]]
+    concepts.extend(q for q in parts[1:] if q not in MESH_MODIFIERS)
+    seen: set[str] = set()
+    return [c for c in concepts if not (c in seen or seen.add(c))]
 
 _SECTION_LABELS = ("COMPARISON", "INDICATION", "FINDINGS", "IMPRESSION")
 
@@ -173,10 +233,12 @@ def load_corpus(directory: Path, *, limit: int | None = None) -> list[OpeniRepor
 
 
 __all__ = [
+    "MESH_MODIFIERS",
     "MESH_TO_FINDING",
     "REDACTION_TOKEN",
     "OpeniReport",
     "load_corpus",
+    "mesh_concepts",
     "normalise_redactions",
     "parse_report",
 ]

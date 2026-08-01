@@ -86,6 +86,11 @@ HEADLINES = [
     ("pooled kappa", "openi_heldout", "/kappa/pooled/kappa", "0.897"),
     ("pooled kappa, baseline", "openi_heldout_baseline", "/kappa/pooled/kappa", "0.814"),
     ("n held-out reports", "openi_heldout", "/n_reports", "1,965"),
+    # The dev score is quoted beside held-out to argue the corrections
+    # generalised. Pinned because it is the number that moved when `atelectases`
+    # was mapped, and it silently invalidated a "gap of 0.002" claim in two CVs
+    # that nothing in this repo could have caught.
+    ("micro F1, dev", "openi_dev", "/micro/f1", "0.9049"),
     # Normal-study detection, strict and vocabulary-adjusted, with the baselines.
     ("normal detection strict", "openi_heldout", "/normal_detection/f1", "0.854"),
     (
@@ -131,15 +136,15 @@ ALLOWED = {
     # JSON. If it drifts, the demo output no longer matches the README.
     74: "studies in the `make demo` transcript",
     20260731: "`make demo` seed",
-    # -- Error decomposition behind the normal-study fix. One-off analysis of a
-    # single evaluation run; the counts were reported, not serialised. They
-    # cannot drift because nothing regenerates them.
-    577: "false positives decomposed in the normal-detection investigation",
-    244: "distinct out-of-vocabulary MeSH terms found",
-    2125: "mentions of those out-of-vocabulary terms",
-    181: "granuloma mentions",
-    134: "degenerative-change mentions",
-    101: "calcinosis mentions",
+    # -- Retired decomposition figures. These were quoted as the normal-detection
+    # error breakdown and could not be reproduced from the committed code at any
+    # scoping tried — held-out, full corpus, baseline or current. They survive
+    # only inside the note in RESULTS.md that records their retirement. The live
+    # figures are now serialised to `normal_detection_errors` by the evaluation,
+    # so their replacements are readings rather than recollections.
+    577: "retired: unreproducible false-positive count, kept in the correction note",
+    244: "retired: unreproducible distinct-term count",
+    2125: "retired: unreproducible mention count",
     # -- Per-defect F1 deltas from the four real-data corrections, quoted in
     # prose. Same status: reported once, not serialised.
     0.42: "pneumothorax F1 gain from the `clear of` negation cue",
@@ -170,8 +175,13 @@ ALLOWED = {
     46: "the apparent %% regression between them, which was noise",
     0.537: "per-stage scaling factor that showed the slowdown was machine-wide",
     0.542: "the other end of that range",
+    # -- Derived, not read. The dev/held-out gap is the difference of two values
+    # that are themselves pinned above, so if either moves this becomes wrong and
+    # the pins catch it. Stated in prose because "a gap of 0.004" reads better
+    # than asking the reader to subtract.
+    0.004: "dev minus held-out micro F1; both operands are pinned in HEADLINES",
     # -- Test count. Checked by test_readme_test_count_is_current, not here.
-    387: "tests claimed in the README; verified by its own check below",
+    400: "tests claimed in the README; verified by its own check below",
     94: "coverage on `deid`, %",
     # -- Stratum labels, standards, statute references. Not measurements.
     59: "upper bound of the 40-59 age band label",
@@ -180,15 +190,10 @@ ALLOWED = {
     3.15: "DICOM PS3.15",
     4: "FHIR R4",
     2023: "DPDP Act 2023",
-    15: "DPDP s.15",
     16: "DPDP s.16, cross-border transfer",
     14: "digits in an ABHA number",
     # 1.0 and 1.00 are the same float, so this entry has to carry both readings.
     1.0: "edge density of merged text lines, upper bound; also release v1.0.0",
-    113100: "DCM de-identification method code",
-    113101: "DCM de-identification method code",
-    113107: "DCM de-identification method code",
-    113108: "DCM de-identification method code",
 }
 
 #: Section and list numbering, table pipes, and markdown syntax produce digits
@@ -335,6 +340,26 @@ def test_every_number_resolves_to_a_source(doc):
         "Either they came from a run whose JSON was never committed, or they were "
         "typed by hand. If a number genuinely is not a reading, add it to ALLOWED "
         "with the reason."
+    )
+
+
+def test_the_allowlist_has_no_dead_entries():
+    """Every exemption must still be earning its place.
+
+    This file claims the allowlist is "kept short". Nothing enforced that, and an
+    exemption for a number no document quotes any more is an exemption nobody
+    will ever re-examine — it just widens the hole for whatever number happens to
+    collide with it later. Eight had already accumulated when this was added.
+    """
+    quoted: set[float] = set()
+    for doc in (RESULTS_MD, README):
+        quoted |= _numbers(doc.read_text(encoding="utf-8"))
+
+    dead = sorted(n for n in ALLOWED if n not in quoted)
+    assert not dead, (
+        f"ALLOWED exempts numbers no document quotes any more: {dead}. Delete "
+        "them. An exemption that guards nothing still silently admits any future "
+        "number that happens to equal it."
     )
 
 

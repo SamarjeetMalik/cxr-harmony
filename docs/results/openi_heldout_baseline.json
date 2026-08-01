@@ -181,6 +181,55 @@
     "recall": 0.4033,
     "support": 734
   },
+  "normal_detection_errors": {
+    "called_normal_but_annotated_abnormal": 279,
+    "distinct_out_of_vocabulary_terms": 187,
+    "most_common": [
+      {
+        "studies": 75,
+        "term": "degenerative change"
+      },
+      {
+        "studies": 58,
+        "term": "lung"
+      },
+      {
+        "studies": 48,
+        "term": "thoracic vertebrae"
+      },
+      {
+        "studies": 47,
+        "term": "calcified granuloma"
+      },
+      {
+        "studies": 38,
+        "term": "calcinosis"
+      },
+      {
+        "studies": 36,
+        "term": "spine"
+      },
+      {
+        "studies": 25,
+        "term": "opacity"
+      },
+      {
+        "studies": 20,
+        "term": "aorta, thoracic"
+      },
+      {
+        "studies": 19,
+        "term": "granuloma"
+      },
+      {
+        "studies": 18,
+        "term": "markings"
+      }
+    ],
+    "note": "the decomposition behind reporting normal detection twice: a study wrongly called normal is either a genuine extraction miss (carried a canonical finding) or a vocabulary gap (everything annotated lies outside the nine findings). Run with --baseline for the pre-OTHER-detection figures.",
+    "of_which_carried_a_canonical_finding": 21,
+    "out_of_vocabulary_mentions": 871
+  },
   "normal_detection_vocabulary_adjusted": {
     "f1": 0.5633,
     "note": "excludes studies whose only annotated findings lie outside the canonical nine-finding vocabulary; the gap against the strict figure is the vocabulary coverage gap, not an extraction error",
@@ -270,5 +319,182 @@
       "support": 3,
       "tp": 3
     }
+  },
+  "vocabulary_coverage": {
+    "concepts": {
+      "distinct_terms": 481,
+      "mentions": 6631,
+      "most_common": [
+        {
+          "studies": 696,
+          "term": "lung"
+        },
+        {
+          "studies": 247,
+          "term": "degenerative"
+        },
+        {
+          "studies": 246,
+          "term": "opacity"
+        },
+        {
+          "studies": 244,
+          "term": "thoracic vertebrae"
+        },
+        {
+          "studies": 213,
+          "term": "degenerative change"
+        },
+        {
+          "studies": 168,
+          "term": "calcinosis"
+        },
+        {
+          "studies": 152,
+          "term": "aorta"
+        },
+        {
+          "studies": 142,
+          "term": "calcified granuloma"
+        },
+        {
+          "studies": 136,
+          "term": "hypoinflation"
+        },
+        {
+          "studies": 126,
+          "term": "tortuous"
+        },
+        {
+          "studies": 117,
+          "term": "hyperdistention"
+        },
+        {
+          "studies": 104,
+          "term": "spine"
+        },
+        {
+          "studies": 102,
+          "term": "hilum"
+        },
+        {
+          "studies": 101,
+          "term": "scarring"
+        },
+        {
+          "studies": 94,
+          "term": "diaphragm"
+        },
+        {
+          "studies": 93,
+          "term": "cicatrix"
+        },
+        {
+          "studies": 90,
+          "term": "upper lobe"
+        },
+        {
+          "studies": 89,
+          "term": "lower lobe"
+        },
+        {
+          "studies": 84,
+          "term": "markings"
+        },
+        {
+          "studies": 76,
+          "term": "interstitial"
+        }
+      ],
+      "studies_affected": 1220
+    },
+    "head_terms": {
+      "distinct_terms": 456,
+      "mentions": 4507,
+      "most_common": [
+        {
+          "studies": 270,
+          "term": "lung"
+        },
+        {
+          "studies": 246,
+          "term": "opacity"
+        },
+        {
+          "studies": 213,
+          "term": "degenerative change"
+        },
+        {
+          "studies": 168,
+          "term": "calcinosis"
+        },
+        {
+          "studies": 164,
+          "term": "thoracic vertebrae"
+        },
+        {
+          "studies": 142,
+          "term": "calcified granuloma"
+        },
+        {
+          "studies": 101,
+          "term": "scarring"
+        },
+        {
+          "studies": 93,
+          "term": "spine"
+        },
+        {
+          "studies": 93,
+          "term": "cicatrix"
+        },
+        {
+          "studies": 92,
+          "term": "diaphragm"
+        },
+        {
+          "studies": 89,
+          "term": "aorta"
+        },
+        {
+          "studies": 84,
+          "term": "markings"
+        },
+        {
+          "studies": 69,
+          "term": "catheters, indwelling"
+        },
+        {
+          "studies": 65,
+          "term": "airspace disease"
+        },
+        {
+          "studies": 63,
+          "term": "granuloma"
+        },
+        {
+          "studies": 59,
+          "term": "granulomatous disease"
+        },
+        {
+          "studies": 59,
+          "term": "atherosclerosis"
+        },
+        {
+          "studies": 57,
+          "term": "density"
+        },
+        {
+          "studies": 57,
+          "term": "deformity"
+        },
+        {
+          "studies": 57,
+          "term": "pulmonary emphysema"
+        }
+      ],
+      "studies_affected": 1214
+    },
+    "n_reports": 1965
   }
 }
