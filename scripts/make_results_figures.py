@@ -541,6 +541,27 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def canonical_digest(path: Path) -> str:
+    """Digest a results JSON by its *data*, not its bytes.
+
+    Hashing raw bytes seemed obviously right and was wrong. Git normalises CRLF
+    to LF on commit, so a manifest written on Windows recorded digests of CRLF
+    bytes while CI checked out LF and computed different ones — every source
+    looked stale on a checkout where nothing had changed.
+
+    Parsing and re-serialising canonically fixes that, and is what the check
+    actually wants to ask. Reindenting a results file, or changing key order,
+    does not make a figure stale; changing a value does. Bytes cannot tell those
+    apart, and the question here is about data.
+
+    Kept in step with the copy in ``tests/test_figures_current.py`` by
+    ``test_digest_helpers_agree``.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def _display(path: Path) -> str:
     """Repo-relative when it can be, absolute otherwise.
 
@@ -564,9 +585,14 @@ def write_manifest() -> Path:
 
     So the source digests are recorded here and checked by
     ``tests/test_figures_current.py``. That check is platform-independent —
-    comparing hashes of the *inputs* needs no rendering — which matters because
+    comparing digests of the *inputs* needs no rendering — which matters because
     comparing the PNGs themselves only works where the renderer matches. The
     renderer versions are recorded for exactly that reason.
+
+    Source digests are canonical (see :func:`canonical_digest`), not raw-byte, so
+    a CRLF checkout and an LF one agree. Figure digests are raw bytes, which is
+    correct for a PNG and is why they are only compared under a matching
+    renderer.
     """
     manifest = {
         "note": (
@@ -581,7 +607,7 @@ def write_manifest() -> Path:
             "freetype": matplotlib.ft2font.__freetype_version__,
         },
         "sources": {
-            path.name: _sha256(path) for path in sorted(RESULTS.glob("*.json"))
+            path.name: canonical_digest(path) for path in sorted(RESULTS.glob("*.json"))
         },
         "figures": {
             path.name: _sha256(path) for path in sorted(FIGURES.glob("results_*.png"))

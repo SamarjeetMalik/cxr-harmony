@@ -171,7 +171,7 @@ ALLOWED = {
     0.537: "per-stage scaling factor that showed the slowdown was machine-wide",
     0.542: "the other end of that range",
     # -- Test count. Checked by test_readme_test_count_is_current, not here.
-    385: "tests claimed in the README; verified by its own check below",
+    387: "tests claimed in the README; verified by its own check below",
     94: "coverage on `deid`, %",
     # -- Stratum labels, standards, statute references. Not measurements.
     59: "upper bound of the 40-59 age band label",

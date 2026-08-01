@@ -50,7 +50,7 @@ pipeline serves:
 | Cohen's κ vs radiologist annotation (held-out) | **0.897** — target >0.80 |
 | Normal-study detection (strict / vocabulary-adjusted) | **0.854 / 0.932** — was 0.452 / 0.563 |
 | Throughput, real archive, end to end | **88,742/hour** median of 5 runs, **60,531** worst case — target >500 |
-| Tests | **385** |
+| Tests | **387** |
 
 ---
 
@@ -213,7 +213,7 @@ across sites rather than only within one.
 
 ## Verification
 
-Correctness claims here are tested, not asserted. 385 tests, and the ones that
+Correctness claims here are tested, not asserted. 387 tests, and the ones that
 matter most break something first — a QC check that has never been observed to
 fail is not evidence of anything.
 

@@ -46,7 +46,26 @@ pytestmark = pytest.mark.skipif(
 
 
 def _sha256(path: Path) -> str:
+    """Raw bytes. Correct for a PNG, wrong for anything git rewrites."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _canonical_digest(path: Path) -> str:
+    """Digest a results JSON by its data, not its bytes.
+
+    Must stay identical to ``canonical_digest`` in
+    ``scripts/make_results_figures.py``; :func:`test_digest_helpers_agree` fails
+    if the two ever diverge. Duplicated rather than imported so this check keeps
+    working without importing matplotlib — it is the portable half of this file
+    and should not acquire a plotting dependency.
+
+    Raw-byte hashing was the first attempt and broke immediately: git normalises
+    CRLF to LF on commit, so a manifest written on Windows disagreed with every
+    Linux checkout and reported all seven sources stale when nothing had changed.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _manifest() -> dict:
@@ -56,7 +75,7 @@ def _manifest() -> dict:
 def test_figures_were_built_from_the_current_results():
     """Every results JSON must be the one the committed figures were drawn from."""
     recorded = _manifest()["sources"]
-    present = {p.name: _sha256(p) for p in sorted(RESULTS.glob("*.json"))}
+    present = {p.name: _canonical_digest(p) for p in sorted(RESULTS.glob("*.json"))}
 
     stale = sorted(n for n, d in present.items() if n in recorded and recorded[n] != d)
     missing = sorted(set(recorded) - set(present))
@@ -76,6 +95,51 @@ def test_figures_were_built_from_the_current_results():
         f"{unrecorded} exist but no committed figure was built from them. Either they "
         "are new results with no figure yet, or `make figures` has not been run since "
         "they appeared."
+    )
+
+
+def test_digest_helpers_agree():
+    """The script's digest and this file's copy must not drift apart.
+
+    They are duplicated deliberately (see :func:`_canonical_digest`), and a
+    silent divergence would make every source look stale — the exact false alarm
+    this whole check exists to avoid.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "_figs_digest", ROOT / "scripts" / "make_results_figures.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["_figs_digest"] = module
+    try:
+        spec.loader.exec_module(module)
+        for path in sorted(RESULTS.glob("*.json")):
+            assert module.canonical_digest(path) == _canonical_digest(path), (
+                f"canonical_digest disagrees with the test's copy on {path.name}"
+            )
+    finally:
+        sys.modules.pop("_figs_digest", None)
+
+
+def test_source_digests_survive_line_ending_translation(tmp_path):
+    """A CRLF checkout and an LF checkout must agree.
+
+    This is the bug that broke CI: raw-byte digests written on Windows disagreed
+    with every Linux checkout. Asserting the property directly means a future
+    change back to byte hashing fails here rather than three commits later on
+    somebody else's machine.
+    """
+    source = next(iter(sorted(RESULTS.glob("*.json"))))
+    text = source.read_text(encoding="utf-8")
+
+    lf = tmp_path / "lf.json"
+    lf.write_bytes(text.replace("\r\n", "\n").encode("utf-8"))
+    crlf = tmp_path / "crlf.json"
+    crlf.write_bytes(text.replace("\r\n", "\n").replace("\n", "\r\n").encode("utf-8"))
+
+    assert lf.read_bytes() != crlf.read_bytes(), "test setup failed to differ in bytes"
+    assert _canonical_digest(lf) == _canonical_digest(crlf), (
+        "line endings changed the digest; the manifest will report every source "
+        "stale on a checkout with different line-ending settings"
     )
 
 
