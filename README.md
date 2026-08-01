@@ -49,8 +49,27 @@ pipeline serves:
 | Real archive mixing greyscale conventions, silently | **372 MONOCHROME1 : 28 MONOCHROME2** |
 | Cohen's κ vs radiologist annotation (held-out) | **0.897** — target >0.80 |
 | Normal-study detection (strict / vocabulary-adjusted) | **0.854 / 0.932** — was 0.452 / 0.563 |
-| Throughput, real archive, end to end | **103,013 studies/hour** — target >500 |
-| Tests | **364** |
+| Throughput, real archive, end to end | **88,742/hour** median of 5 runs, **60,531** worst case — target >500 |
+| Tests | **383** |
+
+---
+
+## What is in here
+
+A reviewer of an earlier revision reported four of these as missing. They were
+present and shipped; nothing in this README pointed at them, and work that cannot
+be found does not count. So it is now written down.
+
+| | Where | What it does |
+|---|---|---|
+| **Pipeline versioning** | [`dvc.yaml`](dvc.yaml), [`params.yaml`](params.yaml) | Six stages with declared dependencies and outputs, so a changed parameter reruns exactly the stages it invalidates. `dvc repro` reproduces the results JSONs the docs are read from. |
+| **Stratified splitting** | [`release/splits.py`](src/cxr_harmony/release/splits.py) | Patient-level hash-threshold splits with proportional allocation across site × sex × age strata, so a small stratum is not lost to chance. Stable under cohort growth: adding patients does not move existing ones. |
+| **Body-part gate** | [`ingest/scanner.py`](src/cxr_harmony/ingest/scanner.py), [`qc/`](src/cxr_harmony/qc/) | `BodyPartExamined` was empty on **all 400** real objects surveyed, so the ingest filter cannot do its job. Studies are flagged `BODY_PART_UNVERIFIED` and a release-blocking QC check refuses to ship a cohort of them. The gate exists; the classifier does not, and [RESULTS.md](docs/RESULTS.md) says why. |
+| **Interoperability** | [`interop/fhir.py`](src/cxr_harmony/interop/fhir.py) | FHIR R4 `ImagingStudy`, `DiagnosticReport` and `Observation` resources with SNOMED CT coding, so the cohort is addressable by a hospital system rather than only by this repo. |
+| **Key handling** | [`deid/pseudonym.py`](src/cxr_harmony/deid/pseudonym.py) | `load_or_create_key` **raises** rather than silently creating a key, and warns when it does create one. `Pseudonymiser.from_env()` reads `CXR_HARMONY_KEY` so a mounted secret never touches disk. |
+| **Security audit** | [`Makefile`](Makefile) | `make audit` runs dependency and static checks as a target, not as a habit someone has to remember. |
+| **Deployment gap** | [`docs/deployment.md`](docs/deployment.md) | What separates this demo configuration from a deployment — PostgreSQL with row-level security, object storage, key custody — written out so the gap is explicit rather than assumed closed. |
+| **Number traceability** | [`tests/test_docs_consistency.py`](tests/test_docs_consistency.py) | Every headline in this README and in RESULTS.md is pinned to the JSON key it came from, and superseded figures are asserted absent. Added after a stale throughput number survived three revisions of this file. |
 
 ---
 
@@ -193,7 +212,7 @@ across sites rather than only within one.
 
 ## Verification
 
-Correctness claims here are tested, not asserted. 364 tests, and the ones that
+Correctness claims here are tested, not asserted. 383 tests, and the ones that
 matter most break something first — a QC check that has never been observed to
 fail is not evidence of anything.
 

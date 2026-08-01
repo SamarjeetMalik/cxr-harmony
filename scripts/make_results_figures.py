@@ -82,7 +82,10 @@ def fig_targets() -> Path | None:
 
     rows = [
         # (label, achieved, target, unit, status)
-        ("Ingestion throughput\n(local processing)", end_to_end["studies_per_hour"], 500,
+        # The *slowest* of the repeats, not the median. This is a capacity claim,
+        # and a capacity claim is worth no more than the worst run behind it.
+        ("Ingestion throughput\n(local processing, worst run)",
+         end_to_end["studies_per_hour_slowest"], 500,
          "studies/hour", "pass"),
         ("PHI removal recall\n(synthetic only)", 100.0, 99.2, "%", "pass-caveat"),
         ("Label agreement\nCohen's κ", kappa, 0.80, "κ", "pass"),
@@ -480,24 +483,35 @@ def fig_throughput() -> Path | None:
 
     fig, ax = plt.subplots(figsize=(9.5, 4.0))
 
-    labels, values, colours = [], [], []
+    # Bars are the median of the repeats; the whisker spans slowest to fastest.
+    # Drawing the range is the point of the figure: `ingest` varies by nearly 7x
+    # between a cold and a warm filesystem cache, and a bare bar would present
+    # one draw from that spread as though it were the throughput. That is the
+    # exact mistake this figure previously helped make.
+    labels, medians, lower, upper, colours = [], [], [], [], []
     for run in bench["runs"]:
         short = "real archive" if run["corpus"].startswith("real") else "synthetic"
         for stage in run["stages"]:
             labels.append(f"{short}\n{stage['stage']}")
-            values.append(stage["studies_per_hour"])
+            medians.append(stage["studies_per_hour_median"])
+            lower.append(stage["studies_per_hour_median"] - stage["studies_per_hour_slowest"])
+            upper.append(stage["studies_per_hour_fastest"] - stage["studies_per_hour_median"])
             colours.append(OK if stage["meets_target"] else WARN)
 
     x = np.arange(len(labels))
-    ax.bar(x, values, color=colours, alpha=0.9)
+    ax.bar(x, medians, color=colours, alpha=0.9)
+    ax.errorbar(
+        x, medians, yerr=[lower, upper], fmt="none",
+        ecolor=INK, elinewidth=1.2, capsize=4,
+    )
     ax.axhline(bench["target_studies_per_hour"], color=INK, linestyle="--", linewidth=1.4)
     ax.text(
         len(labels) - 0.5, bench["target_studies_per_hour"] * 1.25,
         f"target {bench['target_studies_per_hour']}/hr",
         ha="right", fontsize=8.5, color=INK,
     )
-    for xi, v in zip(x, values, strict=True):
-        ax.text(xi, v * 1.08, f"{v:,.0f}", ha="center", fontsize=8, color=INK)
+    for xi, med, up in zip(x, medians, upper, strict=True):
+        ax.text(xi, (med + up) * 1.10, f"{med:,.0f}", ha="center", fontsize=8, color=INK)
 
     ax.set_yscale("log")
     ax.set_xticks(x)
@@ -507,11 +521,12 @@ def fig_throughput() -> Path | None:
 
     fig.text(
         0.5, -0.14,
-        "Log scale, because the margin is two orders of magnitude and a linear axis would hide "
-        "every difference.\nLocal processing only: excludes network "
-        "transfer from the partner site, "
-        "which is where a real deployment's\nceiling almost certainly sits. Read as 'processing is "
-        "not the bottleneck', not as a 200× headline.",
+        "Bars are the median of 5 runs; whiskers span slowest to fastest. Log scale, because the "
+        "margin is two orders\nof magnitude and a linear axis would hide every difference. "
+        "`ingest` varies most because it reads every file to\nhash it, so a cold cache and a warm "
+        "one differ by ~7x. Local processing only: excludes network transfer from\nthe partner "
+        "site, which is where a real deployment's ceiling almost certainly sits. Read as "
+        "'processing is not\nthe bottleneck', not as a 200× headline.",
         ha="center", fontsize=8, color=MUTED,
     )
 

@@ -25,7 +25,7 @@ and is out of scope here.
 
 | Target | Required | Achieved | |
 |---|---|---|---|
-| Ingestion throughput | >500 studies/hour | **103,013/hour** on the real archive | pass |
+| Ingestion throughput | >500 studies/hour | **88,742/hour** median, **60,531** worst-case | pass |
 | PHI removal recall | ≥99.2% | **100%** (0 of 145 identifiers survived) | pass, synthetic only |
 | Label harmonisation agreement | Cohen's κ > 0.80 | **κ = 0.897** on real radiologist annotation | pass |
 | Reproducibility | 100% | **byte-identical** on rerun from the same seed | pass |
@@ -34,11 +34,14 @@ and is out of scope here.
 Two of those need their caveat carried with them everywhere, so they are repeated
 below rather than left in a footnote.
 
-**Throughput excludes the network.** It measures local processing of files already
-on disk, single process, no parallelism. It excludes transfer from the partner
-site, C-STORE negotiation and receive-side queueing — which is where a real
-deployment's ceiling almost certainly sits. Read it as *processing is not the
-bottleneck*, not as a 200× headline.
+**Throughput excludes the network, and is quoted against the slowest run.** It
+measures local processing of files already on disk, single process, no
+parallelism, and excludes transfer from the partner site, C-STORE negotiation and
+receive-side queueing — which is where a real deployment's ceiling almost
+certainly sits. Read it as *processing is not the bottleneck*.
+
+The target is judged on the **slowest of five runs**, not the median. A capacity
+claim that only holds on a good day is not a capacity claim.
 
 **PHI removal recall is measurable only on synthetic data.** Every public corpus
 has already been de-identified by its publisher, so there is no PHI left to
@@ -228,18 +231,35 @@ would have been worse than none.
 
 ![Throughput](figures/results_throughput.png)
 
-| Corpus | Stage | Studies/hour |
-|---|---|---:|
-| Real archive | ingest | 256,627 |
-| Real archive | de-identify | 172,094 |
-| Real archive | ingest + de-identify | **103,013** |
-| Synthetic | ingest + de-identify | 88,668 |
+Median of **5 runs per corpus**, with the range, because one timing is not a
+measurement:
 
-Both are reported because quoting only the synthetic figure would flatter the
-result — though here the real archive is *faster*, since its images are 256×256
-against the synthetic corpus's 512×512. Hardware and thread count are recorded in
-[`benchmark.json`](results/benchmark.json); a throughput number without a machine
-attached is not a measurement.
+| Corpus | Stage | Median/hr | Slowest | Fastest | Spread |
+|---|---|---:|---:|---:|---:|
+| Real archive | ingest | 880,439 | 154,603 | 1,045,626 | 6.76× |
+| Real archive | de-identify | 98,689 | 98,091 | 100,280 | 1.02× |
+| Real archive | **ingest + de-identify** | **88,742** | **60,531** | 91,504 | 1.51× |
+| Synthetic | ingest + de-identify | 70,816 | 51,990 | 74,396 | 1.43× |
+
+### Why this is reported as a range, and a mistake that is worth recording
+
+Earlier versions of this page quoted **103,013/hour**, and then **55,569/hour**,
+each from a single run. The second looked like a 46% regression and was written up
+as one. It was not: all three stages had scaled by the same factor (0.537–0.542),
+including `ingest`, which had not been functionally changed at all. A uniform
+slowdown across a changed and an unchanged stage is machine state, not code.
+
+Repeating the run made the cause obvious. **De-identification is stable at 1.02×
+spread** — that is a real measurement. **Ingest spans 6.76×**, because it reads
+every file to hash it: the first pass is disk-bound and later passes are served by
+the OS page cache. The end-to-end figure inherits that variance.
+
+So the number that matters operationally is the **slowest** one, 60,531/hour: a
+delivery arriving fresh over the network is a cold-cache read, not a warm one.
+
+Hardware and thread count are in [`benchmark.json`](results/benchmark.json). A
+throughput number without a machine attached is not a measurement — and, it turns
+out, neither is a single run on a laptop.
 
 ---
 
@@ -314,6 +334,45 @@ Coverage on `deid`, the package where a defect is a disclosure, is 94%.
 - **That throughput holds end to end.** The network is excluded. See §1.
 - **That burned-in detection is clean on real anatomy.** It is not; small spurious
   boxes occur. See §4.
+
+---
+
+## Recommendations considered and declined
+
+Both of these have been proposed more than once by careful readers. They are
+recorded here with the reason so the same ground is not covered a third time. A
+declined recommendation is not a closed one — the reasoning is stated precisely
+so it can be argued with.
+
+**Neyman allocation for the stratified splits.** Declined, and the disagreement
+is about what a split is for. Neyman allocation samples high-variance strata more
+heavily because it minimises the variance of an *estimate* — it is the right
+answer for a survey estimating a population mean. A train/validation/test split is
+not estimating anything. It is asking whether the test set represents the
+population the model will meet, and over-sampling a stratum because its label
+distribution happens to be noisy makes the test set *less* representative, not
+more. Proportional allocation within strata is implemented and is the intended
+behaviour. If the goal were a variance-minimising prevalence estimate rather than
+an evaluation set, Neyman would be correct and this code would be wrong.
+
+**A trained body-part classifier as a fallback.** Agreed in principle, blocked in
+fact, and re-verified this round rather than assumed from last time. The gate is
+what ships: `BodyPartExamined` is empty on all 400 real objects surveyed, studies
+are flagged `BODY_PART_UNVERIFIED`, and a release-blocking QC check refuses the
+cohort. What is missing is a model to resolve the flag, and it is missing because
+no labelled body-part data was reachable:
+
+| Source | What it actually contains |
+|---|---|
+| `felipekitamura/unifesp-xray-bodypart-classification` | `sample_submission.csv` and test images. No training labels. |
+| `ibombonato/xray-body-images-in-png-unifesp-competion` | `images/test/` only. No training labels. |
+
+Both are the test halves of a competition whose labelled training split is not
+public. A classifier cannot be trained on data that does not exist, and shipping
+one trained on labels invented for the purpose would be worse than the gate: it
+would convert an honest `UNVERIFIED` into a confident wrong answer. If a labelled
+body-part corpus becomes reachable, the hook in `ingest/scanner.py` is where it
+attaches.
 
 ---
 

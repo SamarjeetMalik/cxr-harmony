@@ -25,11 +25,12 @@ import json
 import os
 import platform
 import shutil
+import statistics
 import sys
 import tempfile
 import textwrap
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -67,15 +68,55 @@ class StageTiming:
     def studies_per_hour(self) -> float:
         return self.n_studies / self.seconds * 3600 if self.seconds > 0 else 0.0
 
+
+@dataclass
+class StageResult:
+    """A stage measured over several repeats.
+
+    Reported as a median with its range, never as a single run. Measured on this
+    hardware, five identical runs over the same 400 objects spanned 71,097 to
+    123,177 studies/hour — a **1.73x spread** with no code change between them.
+    Two earlier single-run figures, 103,013 and 55,569, were both quoted as though
+    they were the throughput; they were two draws from that distribution, and the
+    apparent 46% "regression" between them was noise.
+
+    ``meets_target`` is judged on the **slowest** run, not the median. A capacity
+    claim that only holds on a good day is not a capacity claim.
+    """
+
+    stage: str
+    n_studies: int
+    samples: list[float]  # studies/hour, one per repeat
+
+    @property
+    def median(self) -> float:
+        return statistics.median(self.samples)
+
+    @property
+    def slowest(self) -> float:
+        return min(self.samples)
+
+    @property
+    def fastest(self) -> float:
+        return max(self.samples)
+
+    @property
+    def spread(self) -> float:
+        return self.fastest / self.slowest if self.slowest > 0 else 0.0
+
     @property
     def meets_target(self) -> bool:
-        return self.studies_per_hour >= TARGET_STUDIES_PER_HOUR
+        return self.slowest >= TARGET_STUDIES_PER_HOUR
 
     def to_dict(self) -> dict:
         return {
-            **asdict(self),
-            "seconds": round(self.seconds, 3),
-            "studies_per_hour": round(self.studies_per_hour, 1),
+            "stage": self.stage,
+            "n_studies": self.n_studies,
+            "n_repeats": len(self.samples),
+            "studies_per_hour_median": round(self.median, 1),
+            "studies_per_hour_slowest": round(self.slowest, 1),
+            "studies_per_hour_fastest": round(self.fastest, 1),
+            "spread_ratio": round(self.spread, 2),
             "meets_target": self.meets_target,
         }
 
@@ -91,7 +132,8 @@ def hardware() -> dict:
     }
 
 
-def _time_pipeline(src: Path, work: Path, label: str) -> list[StageTiming]:
+def _time_once(src: Path, work: Path, label: str) -> list[StageTiming]:
+    """One pass. Each repeat gets a fresh workspace so nothing is warm-cached."""
     ws = Workspace(work).ensure()
 
     start = time.perf_counter()
@@ -113,7 +155,28 @@ def _time_pipeline(src: Path, work: Path, label: str) -> list[StageTiming]:
     ]
 
 
-def benchmark_synthetic(n_patients: int, image_size: int) -> dict:
+def _time_pipeline(src: Path, work_root: Path, label: str, repeats: int) -> list[StageResult]:
+    """Repeat the run and keep every sample.
+
+    Repeats exist because a single timing on a laptop is not a measurement: this
+    machine produced a 1.73x spread across five identical runs. Reporting one of
+    them as the throughput is how a noise excursion gets published as a
+    regression.
+    """
+    per_stage: dict[str, list[float]] = {}
+    n_studies = 0
+    for attempt in range(repeats):
+        for timing in _time_once(src, work_root / f"run{attempt}", label):
+            per_stage.setdefault(timing.stage, []).append(timing.studies_per_hour)
+            n_studies = timing.n_studies
+
+    return [
+        StageResult(stage=stage, n_studies=n_studies, samples=samples)
+        for stage, samples in per_stage.items()
+    ]
+
+
+def benchmark_synthetic(n_patients: int, image_size: int, repeats: int) -> dict:
     """Throughput on the generated corpus, at the demo's own image size."""
     root = Path(tempfile.mkdtemp(prefix="cxrh-bench-synth-"))
     try:
@@ -121,7 +184,7 @@ def benchmark_synthetic(n_patients: int, image_size: int) -> dict:
         truth = generate_corpus(
             src, seed=20260801, n_patients=n_patients, n_cross_site=4, image_size=image_size
         )
-        timings = _time_pipeline(src, root / "work", "synthetic")
+        timings = _time_pipeline(src, root / "work", "synthetic", repeats)
         return {
             "corpus": "synthetic",
             "n_studies": truth["n_studies"],
@@ -132,7 +195,7 @@ def benchmark_synthetic(n_patients: int, image_size: int) -> dict:
         shutil.rmtree(root, ignore_errors=True)
 
 
-def benchmark_real(images: Path) -> dict:
+def benchmark_real(images: Path, repeats: int) -> dict:
     """Throughput on a real hospital archive.
 
     Files are staged into the delivery layout the pipeline expects. The staging
@@ -152,7 +215,7 @@ def benchmark_real(images: Path) -> dict:
         if not sizes:
             raise SystemExit(f"no .dcm files under {images}")
 
-        timings = _time_pipeline(root / "incoming", root / "work", "real")
+        timings = _time_pipeline(root / "incoming", root / "work", "real", repeats)
         return {
             "corpus": "real (UNIFESP hospital archive)",
             "n_studies": len(sizes),
@@ -172,16 +235,26 @@ def render(result: dict) -> str:
         "",
         "scope:    " + textwrap.fill(SCOPE_CAVEAT, width=78, subsequent_indent=" " * 10),
         "",
-        f"{'corpus':<34} {'stage':<20} {'studies':>8} {'sec':>8} {'studies/hr':>12}  ",
+        f"{'corpus':<16} {'stage':<20} {'median/hr':>11} {'slowest':>10} "
+        f"{'fastest':>10} {'spread':>8}",
         "-" * 92,
     ]
     for run in result["runs"]:
+        short = "real archive" if run["corpus"].startswith("real") else "synthetic"
         for stage in run["stages"]:
             verdict = "PASS" if stage["meets_target"] else "BELOW TARGET"
             lines.append(
-                f"{run['corpus']:<34} {stage['stage']:<20} {stage['n_studies']:>8} "
-                f"{stage['seconds']:>8.2f} {stage['studies_per_hour']:>12,.0f}  {verdict}"
+                f"{short:<16} {stage['stage']:<20} "
+                f"{stage['studies_per_hour_median']:>11,.0f} "
+                f"{stage['studies_per_hour_slowest']:>10,.0f} "
+                f"{stage['studies_per_hour_fastest']:>10,.0f} "
+                f"{stage['spread_ratio']:>7.2f}x  {verdict}"
             )
+    lines += [
+        "",
+        f"Median of {result['repeats']} runs. The target is judged on the *slowest* run,",
+        "not the median: a capacity claim that only holds on a good day is not one.",
+    ]
     return "\n".join(lines)
 
 
@@ -191,6 +264,12 @@ def main() -> None:
     parser.add_argument("--real", type=Path, default=None)
     parser.add_argument("--patients", type=int, default=40)
     parser.add_argument("--image-size", type=int, default=512)
+    parser.add_argument(
+        "--repeats",
+        type=int,
+        default=5,
+        help="Timed passes per corpus. One pass is not a measurement on a laptop.",
+    )
     parser.add_argument("--json-out", type=Path, default=RESULTS)
     args = parser.parse_args()
 
@@ -200,13 +279,14 @@ def main() -> None:
     runs = []
     if args.synthetic:
         print("benchmarking synthetic corpus ...", flush=True)
-        runs.append(benchmark_synthetic(args.patients, args.image_size))
+        runs.append(benchmark_synthetic(args.patients, args.image_size, args.repeats))
     if args.real:
         print(f"benchmarking real archive at {args.real} ...", flush=True)
-        runs.append(benchmark_real(args.real))
+        runs.append(benchmark_real(args.real, args.repeats))
 
     result = {
         "target_studies_per_hour": TARGET_STUDIES_PER_HOUR,
+        "repeats": args.repeats,
         "scope_caveat": SCOPE_CAVEAT,
         "hardware": hardware(),
         "runs": runs,

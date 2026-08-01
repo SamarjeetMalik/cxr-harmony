@@ -6,6 +6,7 @@
     "processor": "AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD",
     "python": "3.11.9"
   },
+  "repeats": 5,
   "runs": [
     {
       "corpus": "synthetic",
@@ -14,24 +15,33 @@
       "stages": [
         {
           "meets_target": true,
+          "n_repeats": 5,
           "n_studies": 64,
-          "seconds": 1.576,
+          "spread_ratio": 4.91,
           "stage": "ingest",
-          "studies_per_hour": 146169.0
+          "studies_per_hour_fastest": 771628.5,
+          "studies_per_hour_median": 735999.5,
+          "studies_per_hour_slowest": 157159.1
         },
         {
           "meets_target": true,
+          "n_repeats": 5,
           "n_studies": 64,
-          "seconds": 3.273,
+          "spread_ratio": 1.06,
           "stage": "deidentify",
-          "studies_per_hour": 70383.7
+          "studies_per_hour_fastest": 82555.4,
+          "studies_per_hour_median": 79358.9,
+          "studies_per_hour_slowest": 77690.4
         },
         {
           "meets_target": true,
+          "n_repeats": 5,
           "n_studies": 64,
-          "seconds": 4.85,
+          "spread_ratio": 1.43,
           "stage": "ingest+deidentify",
-          "studies_per_hour": 47507.7
+          "studies_per_hour_fastest": 74396.1,
+          "studies_per_hour_median": 70816.1,
+          "studies_per_hour_slowest": 51989.7
         }
       ]
     },
@@ -42,24 +52,33 @@
       "stages": [
         {
           "meets_target": true,
+          "n_repeats": 5,
           "n_studies": 400,
-          "seconds": 10.345,
+          "spread_ratio": 6.76,
           "stage": "ingest",
-          "studies_per_hour": 139200.1
+          "studies_per_hour_fastest": 1045626.1,
+          "studies_per_hour_median": 880439.2,
+          "studies_per_hour_slowest": 154602.9
         },
         {
           "meets_target": true,
+          "n_repeats": 5,
           "n_studies": 400,
-          "seconds": 15.569,
+          "spread_ratio": 1.02,
           "stage": "deidentify",
-          "studies_per_hour": 92492.8
+          "studies_per_hour_fastest": 100279.7,
+          "studies_per_hour_median": 98689.4,
+          "studies_per_hour_slowest": 98091.3
         },
         {
           "meets_target": true,
+          "n_repeats": 5,
           "n_studies": 400,
-          "seconds": 25.914,
+          "spread_ratio": 1.51,
           "stage": "ingest+deidentify",
-          "studies_per_hour": 55569.3
+          "studies_per_hour_fastest": 91504.1,
+          "studies_per_hour_median": 88742.2,
+          "studies_per_hour_slowest": 60530.7
         }
       ]
     }
