@@ -180,8 +180,11 @@ ALLOWED = {
     # the pins catch it. Stated in prose because "a gap of 0.004" reads better
     # than asking the reader to subtract.
     0.004: "dev minus held-out micro F1; both operands are pinned in HEADLINES",
-    # -- Test count. Checked by test_readme_test_count_is_current, not here.
-    400: "tests claimed in the README; verified by its own check below",
+    # -- Test count. Checked directly by test_readme_test_count_is_current; this
+    # entry only satisfies the sweep. It counts collected tests including the OCR
+    # ones, which skip without a tesseract binary — so it is the number CI sees,
+    # not the number a laptop without the optional extra sees.
+    415: "tests claimed in the README; verified by its own check below",
     94: "coverage on `deid`, %",
     # -- Stratum labels, standards, statute references. Not measurements.
     59: "upper bound of the 40-59 age band label",

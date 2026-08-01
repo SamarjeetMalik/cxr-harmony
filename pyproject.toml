@@ -44,6 +44,11 @@ dev = [
     "bandit>=1.7",
     "detect-secrets>=1.4",
 ]
+# Burned-in redaction audit trail. Optional because it needs a system binary
+# (`apt-get install tesseract-ocr`, `winget install tesseract-ocr.tesseract`) and
+# because de-identification must not fail for want of an audit record. Without
+# it the pipeline behaves exactly as it does with it; only the audit is absent.
+ocr = ["pytesseract>=0.3.10"]
 
 [project.scripts]
 cxr-harmony = "cxr_harmony.cli:app"

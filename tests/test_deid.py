@@ -662,6 +662,30 @@ def test_nested_uid_remapping_is_consistent_with_the_top_level(deidentified):
                     assert referenced == str(ds.SOPInstanceUID)
 
 
+def test_identifiers_three_levels_down_are_removed(deidentified):
+    """Two levels is where a wrong recursion stops looking wrong.
+
+    A loop that happens to run twice and a genuine recursion are
+    indistinguishable at depth two. The identifier planted at depth three is a
+    *name* rather than a UID, so a failure here is unambiguous: a surviving UID
+    could have leaked from either level above, a surviving physician name
+    could not.
+    """
+    _, ws, _, _ = deidentified
+    checked = 0
+    for path in ws.deid_store.rglob("*.dcm"):
+        ds = pydicom.dcmread(path)
+        for item in getattr(ds, "RequestAttributesSequence", []):
+            for inner in getattr(item, "ReferencedImageSequence", []):
+                for deepest in getattr(inner, "PurposeOfReferenceCodeSequence", []):
+                    assert "RequestingPhysician" not in deepest, (
+                        "an identifier survived three levels down: the profile is "
+                        "descending two levels, not recursing"
+                    )
+                    checked += 1
+    assert checked > 0, "no three-level nesting present, so nothing was tested"
+
+
 def test_the_generator_actually_emits_nested_sequences(delivery):
     """Guards the tests above: if the fixture stopped nesting, they would all
     vacuously pass."""
@@ -673,6 +697,10 @@ def test_the_generator_actually_emits_nested_sequences(delivery):
     item = ds.RequestAttributesSequence[0]
     assert item.AccessionNumber
     assert "ReferencedImageSequence" in item
+    # Depth three, guarded for the same reason and in the same place.
+    inner = item.ReferencedImageSequence[0]
+    assert "PurposeOfReferenceCodeSequence" in inner
+    assert inner.PurposeOfReferenceCodeSequence[0].RequestingPhysician
 
 
 def test_verifier_catches_an_identifier_hidden_in_a_sequence(deidentified, tmp_path):

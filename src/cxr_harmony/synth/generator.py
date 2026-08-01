@@ -302,6 +302,19 @@ def _build_dataset(study: SynthStudy, pixels: np.ndarray, phone: str, address: s
     referenced_item = Dataset()
     referenced_item.ReferencedSOPInstanceUID = study.sop_uid
     referenced_item.ReferencedSOPClassUID = ds.SOPClassUID
+
+    # And a third level, carrying an identifier of a *different kind* from the
+    # two above it. Depth two is where a hand-written recursion usually stops
+    # being wrong, so testing only to depth two cannot distinguish real recursion
+    # from a loop that happens to run twice. The identifier here is a name rather
+    # than a UID so the level is distinguishable in a failure: a surviving
+    # physician name at depth three is unambiguous, whereas a surviving UID could
+    # have leaked from either of the levels above.
+    purpose_item = Dataset()
+    purpose_item.ReferencedSOPInstanceUID = study.sop_uid
+    purpose_item.RequestingPhysician = study.referring_physician.replace("Dr. ", "")
+    referenced_item.PurposeOfReferenceCodeSequence = Sequence([purpose_item])
+
     request_item.ReferencedImageSequence = Sequence([referenced_item])
 
     ds.RequestAttributesSequence = Sequence([request_item])

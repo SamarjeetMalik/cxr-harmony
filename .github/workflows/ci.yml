@@ -23,8 +23,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
+      # The burned-in audit trail needs a system binary. Installed here so its
+      # tests actually execute on at least one platform, rather than skipping
+      # everywhere and proving nothing. Deliberately *not* installed in the
+      # `pipeline` job below, which exists partly to show the pipeline runs
+      # without it.
+      - name: Install tesseract
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+
       - name: Install
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,ocr]"
 
       - name: Lint
         run: ruff check src tests

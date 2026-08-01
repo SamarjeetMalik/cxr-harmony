@@ -178,6 +178,7 @@ def deidentify_dataset(
     site_id: str,
     age_years: int | None = None,
     detection_params: DetectionParams | None = None,
+    audit_key: bytes | None = None,
 ) -> tuple[pydicom.Dataset, str, bool, list[dict], bool]:
     """De-identify one dataset in place.
 
@@ -185,6 +186,11 @@ def deidentify_dataset(
     identifier. It comes from the delivery layout rather than from InstitutionName,
     which is about to be removed and which sites spell inconsistently between
     batches anyway.
+
+    ``audit_key`` opts into the burned-in audit trail: each redacted region gains
+    a classification and a keyed MAC of what was there, never the text itself.
+    Off by default, needs ``pytesseract`` and a ``tesseract`` binary, and cannot
+    change what gets redacted — see :mod:`cxr_harmony.deid.ocr`.
 
     Returns ``(dataset, pseudo_patient_id, linked_across_sites, redacted_regions,
     photometric_inverted)``.
@@ -209,9 +215,24 @@ def deidentify_dataset(
 
     regions: list[dict] = []
     if "PixelData" in ds:
-        cleaned, found = clean_pixel_data(ds.pixel_array, detection_params)
+        original_pixels = ds.pixel_array
+        cleaned, found = clean_pixel_data(original_pixels, detection_params)
         if found:
             regions = [r.to_dict() for r in found]
+            if audit_key is not None:
+                # Optional, and deliberately ordered after the redaction decision
+                # so it cannot influence one. Reads the *pre*-redaction array,
+                # because the regions in `cleaned` are already zeros. Records a
+                # classification and a keyed MAC, never the recognised text — see
+                # `ocr.py` for why storing it would be worse than storing nothing.
+                from .ocr import describe_redactions
+
+                for region, audit in zip(
+                    regions,
+                    describe_redactions(original_pixels, found, key=audit_key),
+                    strict=False,
+                ):
+                    region["audit"] = audit.to_dict()
             ds.PixelData = np.ascontiguousarray(cleaned).tobytes()
 
     ds.BurnedInAnnotation = "NO"

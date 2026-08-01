@@ -50,7 +50,7 @@ pipeline serves:
 | Cohen's κ vs radiologist annotation (held-out) | **0.897** — target >0.80 |
 | Normal-study detection (strict / vocabulary-adjusted) | **0.854 / 0.932** — was 0.452 / 0.563 |
 | Throughput, real archive, end to end | **88,742/hour** median of 5 runs, **60,531** worst case — target >500 |
-| Tests | **400** |
+| Tests | **415** |
 
 ---
 
@@ -69,6 +69,7 @@ be found does not count. So it is now written down.
 | **Key handling** | [`deid/pseudonym.py`](src/cxr_harmony/deid/pseudonym.py) | `load_or_create_key` **raises** rather than silently creating a key, and warns when it does create one. `Pseudonymiser.from_env()` reads `CXR_HARMONY_KEY` so a mounted secret never touches disk. |
 | **Security audit** | [`Makefile`](Makefile) | `make audit` runs dependency and static checks as a target, not as a habit someone has to remember. |
 | **Deployment gap** | [`docs/deployment.md`](docs/deployment.md) | What separates this demo configuration from a deployment — PostgreSQL with row-level security, object storage, key custody — written out so the gap is explicit rather than assumed closed. |
+| **Redaction audit trail** | [`deid/ocr.py`](src/cxr_harmony/deid/ocr.py) | Optional. Classifies each redacted region and stores a keyed HMAC of its contents, never the text. Runs strictly after the redaction decision, so a missing or broken OCR engine cannot cause PHI to survive; without it the pipeline behaves exactly as before. |
 | **Number traceability** | [`tests/test_docs_consistency.py`](tests/test_docs_consistency.py) | Every headline in this README and in RESULTS.md is pinned to the JSON key it came from, and superseded figures are asserted absent. Added after a stale throughput number survived three revisions of this file. |
 | **Figure traceability** | [`tests/test_figures_current.py`](tests/test_figures_current.py), [`docs/figures/MANIFEST.json`](docs/figures/MANIFEST.json) | Every plot is rendered by matplotlib from the same results JSONs, never drawn by hand. The manifest records which digests they were built from, so a results file that changes without `make figures` being rerun fails the build — a stale chart is harder to notice than a stale number, not easier. |
 
@@ -213,7 +214,7 @@ across sites rather than only within one.
 
 ## Verification
 
-Correctness claims here are tested, not asserted. 400 tests, and the ones that
+Correctness claims here are tested, not asserted. 415 tests, and the ones that
 matter most break something first — a QC check that has never been observed to
 fail is not evidence of anything.
 
@@ -299,27 +300,59 @@ Stated because they bear on whether any of this is usable, not for form's sake.
   could not be validated against any ground truth. Over-redaction remains, in the
   safe direction, and is reported. See [docs/RESULTS.md](docs/RESULTS.md).
 - **Open-i is two Indiana hospital systems.** House style varies, and Indian
-  partner-site prose will differ from it. A new archive would need re-scoring.
+  partner-site prose will differ from it. This is unmitigated rather than
+  unexamined: no public Indian chest-radiograph corpus pairing images with report
+  prose was reachable, and the extractor is rule-based, so re-scoring on a partner
+  archive is the only way to know. That re-scoring is a day's work once such an
+  archive exists — `scripts/evaluate_openi.py` takes any corpus with the same
+  adapter shape.
 - **Burned-in text detection transferred, but is not clean.** It found real
   Portuguese annotation on real Brazilian films having been tuned on synthetic
   English, which is genuine zero-shot transfer. It also placed occasional small
   spurious boxes over high-contrast spine anatomy. Over-redaction is the safe error
   direction for a PHI tool, but the false-positive rate on real anatomy is not zero.
-- **Anatomical scope can be unverifiable.** `BodyPartExamined` was empty on all 400
-  real objects surveyed, so the ingest filter could not do its job and non-chest
-  studies entered the cohort. QC now warns rather than pretending otherwise, but a
-  production chest cohort needs a body-part classifier as a fallback. Not built here.
+- **Anatomical scope can be unverifiable.** `BodyPartExamined` was empty on **400
+  of 400** real objects surveyed, so the ingest filter could not do its job and
+  non-chest studies entered the cohort. The gate ships — studies are flagged
+  `BODY_PART_UNVERIFIED` and a release-blocking QC check refuses a cohort of them
+  — but the classifier that would resolve the flag does not, because no labelled
+  body-part data was reachable. Both candidates were checked, twice:
+  `felipekitamura/unifesp-xray-bodypart-classification` ships `sample_submission.csv`
+  and test images; `ibombonato/xray-body-images-in-png-unifesp-competion` ships
+  `images/test/` only. They are the test halves of a competition whose labelled
+  training split is not public. Training on invented labels would convert an honest
+  `UNVERIFIED` into a confident wrong answer, which is worse than the gate.
 - **Access control is application-level.** It constrains the query helpers, not
-  someone holding the SQLite file. That boundary is infrastructural.
-- **No OCR fallback.** Text detection finds *where* characters are, not what they
-  say, which is sufficient for redaction but means there is no audit trail of what
-  was removed.
-- **The synthetic images are not anatomically faithful.** Nothing here reads them
-  diagnostically; they exist to make text detection a genuine problem rather than
-  a trivial one.
-- **Sequence recursion is shallow-tested.** The profile recurses into nested
-  sequences, but the synthetic corpus contains few, so that path has less coverage
-  than the top-level one.
+  someone holding the SQLite file, and the module says so rather than implying
+  otherwise. That boundary is infrastructural, not a missing feature: the
+  equivalent PostgreSQL row-level-security policies are written out in
+  [docs/deployment.md](docs/deployment.md) and deliberately not shipped, because
+  half a PostgreSQL deployment would require a running server before `make demo`
+  did anything and still would not be a production configuration.
+- **The audit trail describes what was removed; it does not keep it.** Detection
+  is geometric, so redaction alone knows *where* characters were, not what they
+  said. An optional OCR pass (`pip install -e ".[ocr]"` plus a `tesseract` binary)
+  now records a category — date-like, name-like, accession-like, laterality
+  marker — a character count, a confidence, and a keyed HMAC of the text. Not the
+  text: an audit file listing every name and accession the tool removed would be a
+  concentrated, indexed copy of exactly what it exists to destroy, and a worse
+  disclosure risk than the pixels were. The HMAC still answers "was patient X's
+  name on these films?", because that question arrives with the name. What is
+  genuinely missing is a *transcript*, and that absence is deliberate.
+- **The synthetic images are not anatomically faithful.** This is a design choice,
+  not a shortfall. Nothing here reads them diagnostically; they exist to give the
+  text detector realistic things to be confused by — high-contrast edges at
+  plausible scales — rather than to look like chests. Fidelity would cost effort
+  and buy nothing this repo measures. The claims that need real anatomy are all
+  made against the real UNIFESP archive instead.
+- **Sequence recursion is tested to three levels, and no deeper.** The generator
+  plants an accession number one level down, a UID two levels down, and a
+  physician name three levels down; each has a test, and a further test fails if
+  the generator ever stops nesting, so none of them can pass vacuously. Three is
+  where the evidence stops: two levels cannot distinguish real recursion from a
+  loop that runs twice, and the third level is a different *kind* of identifier so
+  a failure names its own depth. Real enhanced objects and structured reports nest
+  deeper than this.
 
 ## Layout
 
