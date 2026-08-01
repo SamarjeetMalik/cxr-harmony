@@ -306,11 +306,21 @@ Stated because they bear on whether any of this is usable, not for form's sake.
   archive is the only way to know. That re-scoring is a day's work once such an
   archive exists — `scripts/evaluate_openi.py` takes any corpus with the same
   adapter shape.
-- **Burned-in text detection transferred, but is not clean.** It found real
-  Portuguese annotation on real Brazilian films having been tuned on synthetic
-  English, which is genuine zero-shot transfer. It also placed occasional small
-  spurious boxes over high-contrast spine anatomy. Over-redaction is the safe error
-  direction for a PHI tool, but the false-positive rate on real anatomy is not zero.
+- **Burned-in text detection transferred, but is not clean, and "occasional" is
+  still not a number.** It found real Portuguese annotation on real Brazilian
+  films having been tuned on synthetic English, which is genuine zero-shot
+  transfer. It also placed occasional small spurious boxes over high-contrast
+  spine anatomy. Over-redaction is the safe error direction for a PHI tool, but
+  the false-positive rate on real anatomy is not zero, and *occasional* tells a
+  reader nothing. [`scripts/measure_burned_in_fp.py`](scripts/measure_burned_in_fp.py)
+  exists to replace it: it uses OCR as an independent second opinion on each
+  proposed region and reports an **upper bound** — OCR also fails on genuine
+  text, so every such failure inflates the figure. It has not been run. It needs
+  a `tesseract` binary together with the UNIFESP archive, and the archive is not
+  redistributable, so CI cannot run it either. The figure it produces will appear
+  here when that combination exists on one machine; until then this bullet has
+  tooling and no measurement, which is worth stating plainly rather than leaving
+  the script to look like a result.
 - **Anatomical scope can be unverifiable.** `BodyPartExamined` was empty on **400
   of 400** real objects surveyed, so the ingest filter could not do its job and
   non-chest studies entered the cohort. The gate ships — studies are flagged
